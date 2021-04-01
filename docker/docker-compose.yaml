@@ -1,0 +1,36 @@
+version: "3.7"
+
+services:
+  dots_gazebo_service:
+    container_name: dots_rosdevel
+    build:
+      context: ./
+      dockerfile: Dockerfile.rosdevel
+      args:
+        - UID=${UID:-1000}
+        - GID=${GID:-1000}
+    image: dots/rosdevel:foxy
+    ports:
+      - "8080:8080"
+      - "8081:80"
+      - "8082:5900"
+    volumes:
+      - ../:/home/dots/dots_system
+    networks:
+      - dots_network
+
+#   dots_controller_service:
+#     container_name: dots_controller
+#     build:
+#       context: ./
+#       dockerfile: Dockerfile.controller
+#       args:
+#         - UID=${UID:-1000}
+#         - GID=${GID:-1000}
+#     image: dots/controller:foxy
+#     volumes:
+#       - ../:/home/dots/dots_system
+#     networks:
+#       - dots_network
+networks:
+  dots_network:

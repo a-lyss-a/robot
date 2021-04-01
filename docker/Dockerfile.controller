@@ -1,0 +1,68 @@
+
+#------------------------------------------------------------------
+# Use the official ros-foxy image to build the package
+
+
+#FROM arm64v8/ros:foxy AS appBuilder
+FROM ros:foxy AS appBuilder
+
+
+RUN apt-get update 
+RUN apt-get -y install ros-foxy-xacro ros-foxy-gazebo-ros-pkgs
+RUN apt-get -y install ros-foxy-robot-state-publisher
+
+# RUN mkdir -p /root/dev_ws/src/tcontrol
+# WORKDIR /root/dev_ws
+# ADD src/tcontrol src/tcontrol
+# ADD scripts/start_controller .
+
+# RUN /bin/bash -c "\
+#     source /opt/ros/foxy/setup.bash \
+#     && rosdep install -i --from-path src \
+#     && colcon build"
+
+
+#------------------------------------------------------------------
+# Start from a minimal image and just install what is necessary for
+# ros to run
+FROM ubuntu:20.04
+RUN apt-get update && apt-get -y install \
+    libpython3-dev \
+    libspdlog-dev \
+    libtinyxml-dev \
+    libtinyxml2-dev \
+    python3-lark \
+    python3-yaml \
+    python3-numpy \
+    python3-setuptools \
+    python3-netifaces
+
+COPY --from=appBuilder /opt/ros/foxy/ /opt/ros/foxy
+RUN rm -rf /opt/ros/foxy/include
+RUN rm -rf /usr/include
+
+
+# Clear up
+RUN apt-get -y install strace
+RUN apt-get clean autoclean
+RUN apt-get autoremove --yes
+RUN rm -rf /var/lib/apt/lists/*
+
+# Mount point for storage volume
+RUN mkdir /storage
+
+# Make user
+ARG UID
+ARG GID
+ENV SHELL=/bin/bash
+RUN mkdir /etc/sudoers.d
+RUN bash -c 'if [[ ${ostype} == Linux ]] ; then addgroup --gid ${GID} user ; fi'
+RUN adduser --gecos '' --disabled-password --uid $UID --gid $GID dots \
+    && adduser dots sudo \
+    && echo "dots ALL=(ALL_ NOPASSWD:ALL" >> /etc/sudoers.d/nopasswd
+
+
+WORKDIR /home/dots/dots_system
+
+# 
+#RUN /bin/bash -c "source ./install/setup.bash"
