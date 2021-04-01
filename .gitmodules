@@ -1,0 +1,3 @@
+[submodule "src/dots_gazebo"]
+	path = src/dots_gazebo
+	url = git@bitbucket.org:hauertlab/dots_gazebo.git
