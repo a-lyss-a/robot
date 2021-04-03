@@ -63,11 +63,17 @@ Just launch gazebo:
 ```
 ros2 launch dots_sim gazebo.launch.py
 ```
-Launch a single robot without a controller at a location within the arena (requires Gazebo to be running)
+Launch a single robot without a controller at a location within the arena (requires Gazebo to be running, will wait for it to be started)
 ```
 ros2 launch dots_example_controller basic.launch.py robot_name:=r1 robot_pose:=-0.2,0.3,1.57
 ```
+In another terminal, send a velocity command to the robot launched in the previous step:
+```
+ros2 topic pub /r1/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 1.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 2.0}}"
+```
 
+### Example controller
+The example controller is in ```src/dots_gazebo/dots_example_controller/dots_example_controller/explore.py```.
 
 ### Issues
 Sometimes the linux desktop does not correctly size to the window size. Only fix so far is to ctrl-c the docker session and restart with `make run`.
