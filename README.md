@@ -2,21 +2,40 @@
 
 This is the Dots development environment. It is based on Docker containers, so it can run on Windows, Linux, and OSX. The directory where the environment is started is mounted within the environment so all changes are persistant.
 
-### Prerequisites
+## Prerequisites
 - Working Docker installation
-- (On windows) Windows System for Linux (WSL)
+- (On windows) Windows System for Linux (WSL2) and Ubuntu 20.04  
+    - Install WSL2 (https://docs.microsoft.com/en-us/windows/wsl/install-win10) and Ubuntu 20.04 and make sure WSL2 is enabled, not WSL1
+    - Install Docker Desktop https://hub.docker.com/editions/community/docker-ce-desktop-windows/
+    - Run Docker Desktop and make sure  the Ubuntu 20.04 is enabled in Settings->Resources->WSL integration
+    
+
 - git and make
 
-### Installation
+## Installation
+Firstly, you need to set up SSH keys on your bitbucket account if you haven't already, without this the git checkout will not work.
+
+At your command prompt (Ubuntu 20.04 WSL2 on Windows) do the following, pressing return to all prompts. 
+```
+$ ssh-keygen
+$ cat ~/.ssh/id_rsa.pub
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC90jZf+uTA5MwHzEESZ+aAEqUB8yGOgQX/NM7fgn+difjKspAGn2Zt/rf4QRachx3yfBAkwZpaBtqiav/sthZiXyO0YZk1w8DkQNwEr4J4QxRnmOPHuqAQ2y5b4IzP1ob9KL9XXDGQxEh804NI7MRHLgUgDQkYz2Z+2wG6ZCB6Ao7tHXRdcY39vtUAQhfi7WCaYlDtZVw5r/6XBFH+tqmnwgYh4T9ULi3cTzLvBj7G9/UTBt4LC0bZenbSR6jy2gX6Fg+KzeDHeh0bu1ZhWf1mxiHw7OACcagQ92xhd+kBdzHrLsVgdCHDdVwMFmemlcs17D/1uc70KnrJY3qoiNhqGI799n7vUGxVydFoGjuw76Om/3cIKYMVvy+QhzT0zftTb3lk0XnmC6TYz+Haaj4Aomy2+E4J6xsE2vZsd9xqaXr3TDsjRMt/qppeHwxUc8O86sgGQqOKLtOlSCPnQkTbSziruF4NP4RJokAEJhZnIexB0HwlXRfY5z/fePmcK2U= simonj@Simons-iMac-Pro.local
+```
+This gives a long multiline output, example from mine shown. Copy the whole thing, starting from ```ssh-rsa```, then sign in to your bitbucket account and go to personal settings (icon at bottom right), then SSH keys, then do Add key. Give the key a name then paste the key into the box.
+
 To download and start the environment, go to the the directory you want to keep your work, and do:
 ```
 git clone --recursive git@bitbucket.org:hauertlab/dots_system.git
+```
+
+To build the system, do:
+```
 cd dots_system
 make
 ```
-This will build the docker images then use docker-compose to start it running. The build process will take some time the first time it is done.
+This will build the docker images. The build process may take some time the first time it is done. On a fast machine with SSD and lots of memory it took about 5 minutes. On  a mediocre laptop running Windows it took about 40 minutes.
 
-Then do:
+The system is started using docker-compose. Do:
 ```
 make run
 ```
@@ -51,7 +70,18 @@ This will start the Gazebo simulator GUI in the Linux desktop, then spawn two ro
 
 The simulator starts up paused, press play to start it running. The two robots should move in random curved trajectories, changing direction when they encounter an obstacle.
 
-### Developing
+## GZWeb (experimental)
+There is no experimental support for [GZWeb](http://gazebosim.org/gzweb.html). This is a WebGL based browser front-end to Gazebo that is much more performant than the VNC-based GUI interface, but it is less mature. To tru it out, add ```use_gzweb:=true``` to any launch command that would normally start the standard front-end. Connect [using this link](http://localhost:8085/).
+
+For example, run the explore example like:
+```
+ros2 launch dots_sim run_2_explore.launch.py use_gzweb:=true
+```
+It should look like this:
+![](images/gzweb.jpg)
+
+
+## Developing
 The general development flow is to make changes to your code, do ```colcon build --symlink-install```, then try out your changes. Its only necessary to do ```source install/setup.bash``` in a new terminal or after building for the first time. If you make changes to Python code, it is not usually necessary to do ```colcon build``` since symbolic links are installed for interpreted code, but sometimes this doesn't seem to work.
 
 It is possible to start various parts separately, you might often want to e.g. have the simulator running while manually starting robots.
@@ -72,10 +102,17 @@ In another terminal, send a velocity command to the robot launched in the previo
 ros2 topic pub /r1/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 1.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 2.0}}"
 ```
 
-### Example controller
+## Interface links
+|Link|Interface|
+|-|-|
+|http://localhost:8080/?workspace=/home/dots/dots_system/dots.code-workspace|VScode editor and terminal, in the Dots system workspace|
+|http://localhost:8081/|Web VNC to Linux desktop, for conventional Gazebo front-end and other graphical linux applications|
+|http://localhost:8085/||
+
+## Example controller
 The example controller is in ```src/dots_gazebo/dots_example_controller/dots_example_controller/explore.py```.
 
-### Issues
+## Issues
 Sometimes the linux desktop does not correctly size to the window size. Only fix so far is to ctrl-c the docker session and restart with `make run`.
 
 
