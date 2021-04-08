@@ -81,7 +81,7 @@ RUN cmake -DCMAKE_BUILD_TYPE=Release ..
 RUN make
 RUN make install
 
-# Install code-server
+# Install code-server - opensource webbified VSCode
 WORKDIR /root    
 RUN mkdir -p code_server
 WORKDIR code_server
@@ -101,7 +101,7 @@ RUN mkdir -p .gazebo
 RUN git clone --depth 1 https://github.com/osrf/gazebo_models.git .gazebo/models
 RUN rm -rf .gazebo/models/.git
 
-
+# Get explicit versions of vscode extensions
 RUN wget https://github.com/microsoft/vscode-cpptools/releases/download/1.2.2/cpptools-linux.vsix \
 &&  wget https://github.com/microsoft/vscode-python/releases/download/2021.2.636928669/ms-python-release.vsix \
 &&  code-server --verbose --install-extension cpptools-linux.vsix \
@@ -115,13 +115,49 @@ RUN unzip vscode-ros-dev-vsix.zip
 RUN code-server --install-extension vscode-ros-dev.vsix 
 RUN rm vscode-ros-dev*
 
+# Copy in vscode settings
 COPY ./scripts/coder.json .local/share/code-server/
 COPY ./scripts/settings.json .local/share/code-server/User/
 
 
+# Install gzweb
+#
+# Get the gzweb app, needs patching to work with gazebo11 but this fork is already patched
+RUN git clone https://github.com/eurogroep/gzweb.git
+WORKDIR gzweb
+RUN git checkout gzweb_1.4.0-gazebo11
+# Prevent the side menu starting open, it uses up lots of space and is not very useful
+RUN sed -i "s#globalEmitter.emit('openTab', 'mainMenu'#//globalEmitter.emit('openTab', 'mainMenu'#" gz3d/src/gzgui.js
+# Run deployment, this bulds the gzweb system
+RUN mkdir -p http/client
+# 
+RUN npm install
+RUN node_modules/.bin/grunt build
+RUN mkdir -p build
+WORKDIR build
+RUN cmake ..
+RUN make -j8
+WORKDIR ../gzbridge
+RUN ../node_modules/.bin/node-gyp configure
+RUN sed -i 's/Boost::/boost_/g' build/gzbridge.target.mk
+RUN ../node_modules/.bin/node-gyp build -d 
+WORKDIR ..
+# Get the gazebo models
+RUN cp -r ~/.gazebo/models http/client/assets
+RUN ./webify_models_v2.py http/client/assets
+
+# Copy in the standard gazebo materials and convert all textures
+# to png
+RUN cp -r /usr/share/gazebo-11/media ~/gzweb/http/client/assets/
+RUN cd ~/gzweb/http/client/assets/media/materials/textures \
+    && for f in *jpg; do convert $f ${f%.*}.png; done
+
+
+
+# Ensure ROS environment sourced and display available
+USER dots
 RUN echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
 RUN echo "export DISPLAY=:1" >> ~/.bashrc
-
 
 # Start the servers
 USER root
