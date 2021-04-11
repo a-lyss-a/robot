@@ -68,7 +68,7 @@ RUN apt-get update && apt-get install -y \
 ARG UID
 ARG GID
 ENV SHELL=/bin/bash
-RUN bash -c 'if [[ ${OSTYPE} == linux-gnu ]] ; then addgroup --gid ${GID} user ; fi'
+#RUN bash -c 'if [[ ${OSTYPE} == linux-gnu ]] ; then addgroup --gid ${GID} user ; fi'
 RUN adduser --gecos '' --disabled-password --uid $UID --gid $GID dots \
 &&  adduser dots sudo \
 &&  echo "dots ALL=(ALL_ NOPASSWD:ALL" >> /etc/sudoers.d/nopasswd
