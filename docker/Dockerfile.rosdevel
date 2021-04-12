@@ -153,6 +153,9 @@ RUN cd ~/gzweb/http/client/assets/media/materials/textures \
     && for f in *jpg; do convert $f ${f%.*}.png; done
 
 
+USER root
+RUN apt-get update && apt-get -y install ros-foxy-robot-localization
+
 
 # Ensure ROS environment sourced and display available
 USER dots

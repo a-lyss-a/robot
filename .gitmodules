@@ -4,3 +4,6 @@
 [submodule "src/dots_nav"]
 	path = src/dots_nav
 	url = git@bitbucket.org:hauertlab/dots_nav.git
+[submodule "src/dots_support"]
+	path = src/dots_support
+	url = git@bitbucket.org:hauertlab/dots_support.git
