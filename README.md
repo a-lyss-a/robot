@@ -114,7 +114,14 @@ ros2 topic pub /r1/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 1.0, y: 0.0, z:
 The example controller source code is in ```src/dots_gazebo/dots_example_controller/dots_example_controller/explore.py```.
 
 ## Issues
-Sometimes the linux desktop does not correctly size to the window size. Only fix so far is to ctrl-c the docker session and restart with `make run`.
+Sometimes the linux desktop does not correctly size to the window size. Sometimes reloading the page in the browser fixes this. If not, the only other fix so far is to ctrl-c the docker session and restart with `make run`.
 
 
 Sometimes the Gazebo simulator doesn't corectly stop when  ctrl-c'd. A new simulation won't start because another copy is already running, there will be an error message like `EXCEPTION: Unable to start server[bind: Address already in use]. There is probably another Gazebo process running`. Fix, do `killall gzserver gzclient` before starting new simulation.
+
+
+
+## Setting goal pose for navigator
+```
+ros2 topic pub -1 /robot_deadbeef/goal_pose geometry_msgs/PoseStamped "{header: {stamp: {sec: 0}, frame_id: 'odom'}, pose: {position: {x: 1.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}"
+```

@@ -157,11 +157,29 @@ USER root
 RUN apt-get update && apt-get -y install ros-foxy-robot-localization
 
 
+# Get and build the latest Navigation2 for Foxy because lots of changes
+# and updates since official Foxy release.
+# https://navigation.ros.org/build_instructions/index.html#build
+WORKDIR /home/dots
+RUN mkdir -p nav2_ws/src
+WORKDIR nav2_ws/src
+RUN ls
+RUN git clone https://simonj23@bitbucket.org/simonj23/navigation2.git --branch foxy-devel
+WORKDIR ..
+RUN bash -c 'source /opt/ros/foxy/setup.bash \
+&&  rosdep init \
+&& rosdep update \
+&&  rosdep install -y -r -q --from-paths src --ignore-src --rosdistro foxy \
+&&  colcon build --symlink-install'
+
+# Helper to kill escaped processes
+COPY ./scripts/killros /usr/local/bin
+
 # Ensure ROS environment sourced and display available
 USER dots
-RUN echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
+#RUN echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
+RUN echo "source ~/nav2_ws/install/setup.bash" >> ~/.bashrc
 RUN echo "export DISPLAY=:1" >> ~/.bashrc
-
 # Start the servers
 USER root
 ENV USER=dots
