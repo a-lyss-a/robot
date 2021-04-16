@@ -125,3 +125,93 @@ Sometimes the Gazebo simulator doesn't corectly stop when  ctrl-c'd. A new simul
 ```
 ros2 topic pub -1 /robot_deadbeef/goal_pose geometry_msgs/PoseStamped "{header: {stamp: {sec: 0}, frame_id: 'odom'}, pose: {position: {x: 1.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}"
 ```
+
+## Building navigator2 on robot
+Now working in ~simonj for git access. 
+Making different ros2 workspace and softlinking to code.
+To build navigation2, needed to install:
+```
+ros-foxy-test-msgs
+ros-foxy-behaviortree-cpp-v3
+libgraphicsmagick++1-dev
+ros-foxy-rviz-common
+ros-foxy-rviz-default-plugins
+ros-foxy-angles
+libceres-dev
+ros-foxy-ompl
+ros-foxy-slam-toolbox
+graphicsmagick-libmagick-dev-compat
+ros-foxy-gazebo-ros-pkgs
+lcov
+python3-zmq
+..
+
+
+# Install with:
+#
+rosdep update
+rosdep install -y -r -q --from-paths src --ignore-src --rosdistro foxy
+
+```
+
+
+```
+bringup_ws                  workspace for robot node hardware
+    src
+        dots_bringup        git repo
+            dots_hardware   ros package
+            dots_support    ros package
+server_ws                   workspace for server gui, estop, data logging, optitrack
+    src
+        dots_server         git repo
+            controlui       ros package
+            dots_aux        ros package
+dots_system                 development environment, workspace for controller, gazebo
+    src
+        dots_gazebo         git repo
+            dots_example_controller
+            dots_sim
+            dots_sim_support
+            gazebo_plugins
+        dots_nav            git repo
+            dots_exp_bringup
+            dots_experiments
+            dots_omni_controller
+        dots_support        git repo
+            dots_tf_tools
+
+nav2_ws                     workspace for current foxy_devel branch of navigation2
+    src
+        navigation2
+
+
+dots_system_arm             workspaces for arm builds, softlinked src directory
+nav2_ws_arm
+```
+
+Until the kubernetes stuff is running, use scripts in dots_server to have a unified launch of things on robots.
+
+Groundtruth code needed hacking to make output topic <body>/ground_truth. Should be rewritten to conform to ROS stamdards.
+
+Bringup process:
+```
+1. Start Optitrack
+    cd groundtruth/build
+    ./talker 10.0.0.65 (or whatever IP of windows PC is)
+
+2. Start robot nodes (in bringup_ws)
+    ros2 launch dots_hardware dots_node.launch.py
+
+3. Start GUI (in server_ws)
+    ros2 launch dots_gui control.launch.py
+
+4. Start rviz (in dots_system)
+    ros2 launch dots_exp_bringup run_1_rviz.launch.py robot_name:=robot_7a46592c
+
+5. Start robot controller
+    ros2 launch dots_example_controller basic_with_ekf.launch.py use_sim_time:=false robot_name:=robot_7a46592c
+
+
+
+
+```
