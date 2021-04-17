@@ -125,3 +125,77 @@ Sometimes the Gazebo simulator doesn't corectly stop when  ctrl-c'd. A new simul
 ```
 ros2 topic pub -1 /robot_deadbeef/goal_pose geometry_msgs/PoseStamped "{header: {stamp: {sec: 0}, frame_id: 'odom'}, pose: {position: {x: 1.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}"
 ```
+
+
+
+## Updating submodules
+To get changes, esp if after changed branch:
+```
+git submodule update
+```
+
+### Nav2
+```
+# structure
+├── dots_system
+│   ├── docker
+│   │   └── scripts
+│   ├── images
+│   └── src
+│       ├── dots_gazebo
+│       │   ├── dots_example_controller
+│       │   ├── dots_sim
+│       │   ├── dots_sim_support
+│       │   └── gazebo_plugins
+│       ├── dots_nav
+│       │   ├── dots_exp_bringup
+│       │   ├── dots_experiments
+│       │   └── dots_omni_controller
+│       └── dots_support
+│           └── dots_tf_tools
+├── nav2_ws
+│   └── src
+│       └── navigation2
+│           ├── doc
+│           ├── nav2_amcl
+│           ├── nav2_behavior_tree
+│           ├── nav2_bringup
+│           ├── nav2_bt_navigator
+│           ├── nav2_common
+│           ├── nav2_controller
+│           ├── nav2_core
+│           ├── nav2_costmap_2d
+│           ├── nav2_dwb_controller
+│           ├── nav2_lifecycle_manager
+│           ├── nav2_map_server
+│           ├── nav2_msgs
+│           ├── nav2_navfn_planner
+│           ├── nav2_planner
+│           ├── nav2_recoveries
+│           ├── nav2_regulated_pure_pursuit_controller
+│           ├── nav2_rviz_plugins
+│           ├── nav2_smac_planner
+│           ├── nav2_system_tests
+│           ├── nav2_util
+│           ├── nav2_voxel_grid
+│           ├── nav2_waypoint_follower
+│           ├── navigation2
+│           └── tools
+└── nav2_ws_arm
+    └── src -> ../nav2_ws/src
+
+
+
+
+cd dots_project
+mkdir -p nav2_ws/src
+cd nav2_ws/src
+git clone https://simonj23@bitbucket.org/simonj23/navigation2.git --branch foxy-devel
+
+
+
+
+cd dots_project/nav2_ws_arm
+rosdep update
+rosdep install -y -r -q --from-paths src --ignore-src --rosdistro foxy
+```
