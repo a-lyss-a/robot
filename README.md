@@ -126,7 +126,6 @@ Sometimes the Gazebo simulator doesn't corectly stop when  ctrl-c'd. A new simul
 ros2 topic pub -1 /robot_deadbeef/goal_pose geometry_msgs/PoseStamped "{header: {stamp: {sec: 0}, frame_id: 'odom'}, pose: {position: {x: 1.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}"
 ```
 
-<<<<<<< HEAD
 
 
 ## Updating submodules
@@ -200,7 +199,6 @@ cd dots_project/nav2_ws_arm
 rosdep update
 rosdep install -y -r -q --from-paths src --ignore-src --rosdistro foxy
 ```
-=======
 ## Building navigator2 on robot
 Now working in ~simonj for git access. 
 Making different ros2 workspace and softlinking to code.
@@ -284,10 +282,18 @@ Bringup process:
     ros2 launch dots_exp_bringup run_1_rviz.launch.py robot_name:=robot_7a46592c
 
 5. Start robot controller
-    ros2 launch dots_example_controller basic_with_ekf.launch.py use_sim_time:=false robot_name:=robot_7a46592c
+    ros2 launch dots_exp_bringup run_1_nav_real.launch.py robot_name:=robot_7a46592c
+```
+Same thing in simulation:
+```
+1. Start rviz and gazebo (in dots_system)
+    ros2 launch dots_exp_bringup run_1_rviz.launch.py use_gazebo:=true use_gzclient:=true
 
-
+2. Start robot controller
+    ros2 launch dots_exp_bringup run_1_nav_real.launch.py use_sim_time:=true 
 
 
 ```
->>>>>>> 88b3b3a9f57875023c5f58cf8a271298149d7261
+
+
+
