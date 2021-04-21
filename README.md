@@ -62,7 +62,7 @@ source install/setup.bash
 ```
 This will traverse the packages in the ```src``` directory, compile C++ code, then install C++ and Python executables and support files. These are placed in the ```install``` directory. The ```source``` command makes the just installed packages visible to the ROS system. To run an example, do:
 ```
-ros2 launch dots_sim run_2_explore.launch.py
+ros2 launch dots_example_controller run_2_explore.launch.py use_gzclient:=true
 ```
 This will start the Gazebo simulator GUI in the Linux desktop, then spawn two robots at different locations within the simulated world. It should look like this:
 ![](images/gazebo.jpg)
@@ -75,7 +75,7 @@ There is experimental support for [GZWeb](http://gazebosim.org/gzweb.html). This
 
 For example, run the explore example like:
 ```
-ros2 launch dots_sim run_2_explore.launch.py use_gzweb:=true
+ros2 launch dots_example_controller run_2_explore.launch.py use_gzweb:=true
 ```
 It should look like this:
 ![](images/gzweb.jpg)
@@ -120,13 +120,20 @@ Sometimes the linux desktop does not correctly size to the window size. Sometime
 Sometimes the Gazebo simulator doesn't corectly stop when  ctrl-c'd. A new simulation won't start because another copy is already running, there will be an error message like `EXCEPTION: Unable to start server[bind: Address already in use]. There is probably another Gazebo process running`. Fix, do `killall gzserver gzclient` before starting new simulation.
 
 
+# Useful stuff
 
 ## Setting goal pose for navigator
 ```
 ros2 topic pub -1 /robot_deadbeef/goal_pose geometry_msgs/PoseStamped "{header: {stamp: {sec: 0}, frame_id: 'odom'}, pose: {position: {x: 1.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}"
 ```
 
-
+## Create TF tree pdf
+```
+ros2 run tf2_tools view_frames.py
+```
+Creates a PDF in the current directory of the TF tree.
+## Killing left over processes
+Its common after ctrl-c for some processes to not get shut down properly, particularly the Gazebo server. Included in the environment is the scripts ```killros```, this kills all processes that have been started in that terminal shell. 
 
 ## Updating submodules
 To get changes, esp if after changed branch:
