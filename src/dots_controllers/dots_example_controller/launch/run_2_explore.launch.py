@@ -43,12 +43,11 @@ def generate_launch_description():
             launch_arguments    = { 'robot_name'    : PythonExpression(['"', r[0], '"']),
                                     'robot_pose'    : '%f,%f,%f' % (r[1][0], r[1][1], r[1][2]),
                                     'use_sim_time'  : use_sim_time,
-                                    'use_rviz'      : use_rviz
             }.items()
         ))
 
     ld.add_action(IncludeLaunchDescription(
-        PythonLaunchDescriptionSource( os.path.join(pkg_share, 'launch', 'gazebo.launch.py')),
+        PythonLaunchDescriptionSource( os.path.join(pkg_share, 'launch', 'gazebo_rviz.launch.py')),
         launch_arguments    = {'use_rviz'   : use_rviz}.items()
     ))
 
