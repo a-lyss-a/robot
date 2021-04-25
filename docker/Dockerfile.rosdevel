@@ -187,6 +187,15 @@ WORKDIR ..
 RUN bash -c 'source /opt/ros/foxy/setup.bash \
 &&  colcon build --symlink-install --packages-select gazebo_dev gazebo_msgs gazebo_ros'
 
+# Get latest rosbag2 that will subscribe to all topics, regardless of qos settings
+#WORKDIR /home/dots
+#RUN mkdir -p rosbag2_ws/src
+#WORKDIR rosbag2_ws/src
+#RUN ls -l
+#RUN git clone https://github.com/ros2/rosbag2.git --branch foxy-future --depth 1
+#WORKDIR ..
+#RUN bash -c 'source /opt/ros/foxy/setup.bash \
+#&&  colcon build --symlink-install'
 
 # Helper to kill escaped processes
 COPY ./scripts/killros /usr/local/bin
@@ -195,6 +204,7 @@ COPY ./scripts/killros /usr/local/bin
 USER dots
 #RUN echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
 RUN echo "source ~/nav2_ws/install/setup.bash" >> ~/.bashrc
+#RUN echo "source ~/rosbag2_ws/install/setup.bash" >> ~/.bashrc
 RUN echo "source ~/gazebo_ros_pkgs_ws/install/setup.bash" >> ~/.bashrc
 RUN echo "export DISPLAY=:1" >> ~/.bashrc
 

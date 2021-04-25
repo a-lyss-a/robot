@@ -120,7 +120,7 @@ def generate_launch_description():
     #--------------------------------------------------------------
 
     # Start tf_relay. This listens on the local tf tree and republishes transforms on the global tree 
-    # with a prefix added.
+    # possibly with a prefix added.
     tf2_relay_cmd = Node(
         package     = 'dots_tf_tools',
         executable  = 'tf2_relay',
