@@ -102,6 +102,33 @@ In another terminal, send a velocity command to the robot launched in the previo
 ros2 topic pub /r1/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 1.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 2.0}}"
 ```
 
+## Working with submodules
+The project structure uses git submodules. These are separate git repositories within the directory structure of a master git repo. The project is arranged like this because the submodule repos contain standard ROS2 packages or collections of packages, which will be used elsewhere.
+
+The master repo contains infrastructure to support building and running the Docker development environment. The master repo contains references to particular commits of each submodule repo.
+
+Clone whole environment:
+```
+git clone --recursive git@bitbucket.org:hauertlab/dots_system.git
+```
+Get all updates:
+```
+git pull
+git submodule update
+```
+Most of the time, you will be working within the main repo, creating and modifying ROS packages under the ```src/dots_controllers``` directory. Working in this way, the standard git commands work as normal:
+```
+
+# Get updates from remote
+git pull            
+<make edits and changes>
+# Commit the changes
+git commit -am 'commit message'
+# Push changes to remote
+git push
+```
+
+
 ## Interface links
 |Link|Interface|
 |-|-|
