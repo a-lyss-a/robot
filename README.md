@@ -62,7 +62,7 @@ source install/setup.bash
 ```
 This will traverse the packages in the ```src``` directory, compile C++ code, then install C++ and Python executables and support files. These are placed in the ```install``` directory. The ```source``` command makes the just installed packages visible to the ROS system. To run an example, do:
 ```
-ros2 launch dots_sim run_2_explore.launch.py
+ros2 launch dots_example_controller run_2_explore.launch.py use_gzclient:=true
 ```
 This will start the Gazebo simulator GUI in the Linux desktop, then spawn two robots at different locations within the simulated world. It should look like this:
 ![](images/gazebo.jpg)
@@ -75,7 +75,7 @@ There is experimental support for [GZWeb](http://gazebosim.org/gzweb.html). This
 
 For example, run the explore example like:
 ```
-ros2 launch dots_sim run_2_explore.launch.py use_gzweb:=true
+ros2 launch dots_example_controller run_2_explore.launch.py use_gzweb:=true
 ```
 It should look like this:
 ![](images/gzweb.jpg)
@@ -147,18 +147,59 @@ Sometimes the linux desktop does not correctly size to the window size. Sometime
 Sometimes the Gazebo simulator doesn't corectly stop when  ctrl-c'd. A new simulation won't start because another copy is already running, there will be an error message like `EXCEPTION: Unable to start server[bind: Address already in use]. There is probably another Gazebo process running`. Fix, do `killall gzserver gzclient` before starting new simulation.
 
 
+# Useful stuff
 
 ## Setting goal pose for navigator
 ```
 ros2 topic pub -1 /robot_deadbeef/goal_pose geometry_msgs/PoseStamped "{header: {stamp: {sec: 0}, frame_id: 'odom'}, pose: {position: {x: 1.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}"
 ```
 
+## Create TF tree pdf
+```
+ros2 run tf2_tools view_frames.py
+```
+Creates a PDF in the current directory of the TF tree.
+## Killing left over processes
+Its common after ctrl-c for some processes to not get shut down properly, particularly the Gazebo server. Included in the environment is the scripts ```killros```, this kills all processes that have been started in that terminal shell. 
 
-
-## Updating submodules
+## Working with submodules
 To get changes, esp if after changed branch:
 ```
 git submodule update
+```
+This results in submodules being in 'detached HEAD' state. In order to work on them, it is important to checkout a branch first before committing, e.g, assuming some changes have been made but not yet committed:
+```
+Simons-iMac-Pro:dots_nav simonj$ git branch -a
+* (HEAD detached at bf814e0)
+  hacks
+  master
+  remotes/origin/HEAD -> origin/master
+  remotes/origin/hacks
+  remotes/origin/master
+Simons-iMac-Pro:dots_nav simonj$ git checkout hacks
+M	dots_exp_bringup/launch/run_1_nav_real.launch.py
+Previous HEAD position was bf814e0 Initial real robot sort of working, speed and accel not working correctly in omni controller
+Switched to branch 'hacks'
+Your branch is up to date with 'origin/hacks'.
+Simons-iMac-Pro:dots_nav simonj$ git commit -am 'Moved efk launcher here'
+[hacks d6eced8] Moved efk launcher here
+ 2 files changed, 198 insertions(+), 1 deletion(-)
+ create mode 100644 dots_exp_bringup/launch/basic_with_ekf.launch.py
+Simons-iMac-Pro:dots_nav simonj$ git push
+Enumerating objects: 10, done.
+Counting objects: 100% (10/10), done.
+Delta compression using up to 16 threads
+Compressing objects: 100% (6/6), done.
+Writing objects: 100% (6/6), 2.67 KiB | 2.67 MiB/s, done.
+Total 6 (delta 3), reused 0 (delta 0)
+remote: 
+remote: Create pull request for hacks:
+remote:   https://bitbucket.org/hauertlab/dots_nav/pull-requests/new?source=hacks&t=1
+remote: 
+To bitbucket.org:hauertlab/dots_nav.git
+   f8565df..d6eced8  hacks -> hacks
+Simons-iMac-Pro:dots_nav simonj$ 
+
 ```
 
 ### Nav2
