@@ -175,7 +175,7 @@ RUN bash -c 'source /opt/ros/foxy/setup.bash \
 # Get and build modified copy of gazebo_ros_pkgs due to issues
 # https://github.com/ros-simulation/gazebo_ros_pkgs/issues/1247
 # https://github.com/ros-simulation/gazebo_ros_pkgs/issues/1211
-# Without this hack to set the update rate of the /clock topic to 500Hz, from
+# Without this hack to set the update rate of the /clock topic to 100Hz, from
 # the default of 10Hz, various nodes such as robot_localization 
 # do not run at the required rate
 WORKDIR /home/dots
@@ -187,15 +187,20 @@ WORKDIR ..
 RUN bash -c 'source /opt/ros/foxy/setup.bash \
 &&  colcon build --symlink-install --packages-select gazebo_dev gazebo_msgs gazebo_ros'
 
-# Get latest rosbag2 that will subscribe to all topics, regardless of qos settings
-#WORKDIR /home/dots
-#RUN mkdir -p rosbag2_ws/src
-#WORKDIR rosbag2_ws/src
-#RUN ls -l
-#RUN git clone https://github.com/ros2/rosbag2.git --branch foxy-future --depth 1
-#WORKDIR ..
-#RUN bash -c 'source /opt/ros/foxy/setup.bash \
-#&&  colcon build --symlink-install'
+# Get latest rosbag2 that will subscribe to all topics, regardless of qos settings.
+# This version breaks te API and will not show up as a backport, but fixes many
+# performance bugs and weird behaviours.
+# This is forked off the official repo with a couple of build bugs fixed.
+WORKDIR /home/dots
+RUN apt-get update && apt-get -y install python3-pybind11 python3-json-tricks
+RUN mkdir -p rosbag2_ws/src
+WORKDIR rosbag2_ws/src
+RUN ls -l
+RUN git clone https://simonj23@bitbucket.org/simonj23/rosbag2.git --branch foxy-future --depth 1
+WORKDIR ..
+RUN bash -c 'source /opt/ros/foxy/setup.bash \
+&&  colcon build --merge-install'
+
 
 # Helper to kill escaped processes
 COPY ./scripts/killros /usr/local/bin
@@ -204,7 +209,7 @@ COPY ./scripts/killros /usr/local/bin
 USER dots
 #RUN echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
 RUN echo "source ~/nav2_ws/install/setup.bash" >> ~/.bashrc
-#RUN echo "source ~/rosbag2_ws/install/setup.bash" >> ~/.bashrc
+RUN echo "source ~/rosbag2_ws/install/setup.bash" >> ~/.bashrc
 RUN echo "source ~/gazebo_ros_pkgs_ws/install/setup.bash" >> ~/.bashrc
 RUN echo "export DISPLAY=:1" >> ~/.bashrc
 
