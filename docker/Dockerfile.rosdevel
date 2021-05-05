@@ -201,7 +201,6 @@ WORKDIR ..
 RUN bash -c 'source /opt/ros/foxy/setup.bash \
 &&  colcon build --merge-install'
 
-
 # Helper to kill escaped processes
 COPY ./scripts/killros /usr/local/bin
 
