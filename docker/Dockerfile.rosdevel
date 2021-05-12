@@ -69,7 +69,7 @@ RUN apt-get update && apt-get install -y \
 ARG UID
 ARG GID
 ENV SHELL=/bin/bash
-#RUN bash -c 'if [[ ${OSTYPE} == linux-gnu ]] ; then addgroup --gid ${GID} user ; fi'
+RUN bash -c 'if [[ ${OSTYPE} == linux-gnu ]] ; then addgroup --gid ${GID} user ; fi'
 RUN adduser --gecos '' --disabled-password --uid $UID --gid $GID dots \
 &&  adduser dots sudo \
 &&  echo "dots ALL=(ALL_ NOPASSWD:ALL" >> /etc/sudoers.d/nopasswd
@@ -215,7 +215,7 @@ COPY ./scripts/killros /usr/local/bin
 USER dots
 #RUN echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
 RUN echo "source ~/nav2_ws/install/setup.bash" >> ~/.bashrc
-source RUN echo "source ~/rosbag2_ws/install/setup.bash" >> ~/.bashrc
+RUN echo "source ~/rosbag2_ws/install/setup.bash" >> ~/.bashrc
 RUN echo "source ~/gazebo_ros_pkgs_ws/install/setup.bash" >> ~/.bashrc
 RUN echo "export PYTHONPATH=~/py_trees:$PYTHONPATH" >> ~/.bashrc
 RUN echo "export DISPLAY=:1" >> ~/.bashrc
