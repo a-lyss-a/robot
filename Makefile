@@ -3,10 +3,11 @@
 #--------------------------------------------------------------
 # Docker image build
 
-#export GID = $(id -g)
+
+UNAME := $(shell uname)
 
 buildimg:
-	(cd docker; export GID=$$(id -g); export HOSTOSTYPE=$$OSTYPE;  docker-compose build)
+	(cd docker; export GID=$$(id -g); export HOSTOSTYPE=$(UNAME); docker-compose build)
 
 clean:
 	rm -rf build install log
