@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'explore = dots_example_controller.explore:main',
+            'carry = dots_example_controller.carry:main',
         ],
     },
 )
