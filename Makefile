@@ -6,7 +6,7 @@
 #export GID = $(id -g)
 
 buildimg:
-	cd docker && GID=$$(id -g) docker-compose build
+	(cd docker; export GID=$$(id -g); export HOSTOSTYPE=$$OSTYPE;  docker-compose build)
 
 clean:
 	rm -rf build install log
