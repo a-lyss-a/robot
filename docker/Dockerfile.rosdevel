@@ -201,6 +201,12 @@ WORKDIR ..
 RUN bash -c 'source /opt/ros/foxy/setup.bash \
 &&  colcon build --merge-install'
 
+# Get and build the aruco tag tracking library, the 
+# WORKDIR /home/dots
+# RUN git clone https://simonj23@bitbucket.org/siteks/aruco-3.0.0.git --depth 1
+# WORKDIR 
+
+
 # Helper to kill escaped processes
 COPY ./scripts/killros /usr/local/bin
 
