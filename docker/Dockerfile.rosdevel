@@ -205,22 +205,27 @@ RUN bash -c 'source /opt/ros/foxy/setup.bash \
 &&  colcon build --merge-install'
 
 # Get version 2.1.5 of py_trees, which has proper mem/non-mem semantics. The
-# version in the foxy apt packages is 2.1.2
+# version in the foxy apt packages is 2.1.2. Then remove the new setuptools and
+# downgrade to one that doesn't give deprecatipn warnings. I'm sure there is a 
+# better way of doing this..
 WORKDIR /home/dots
-#RUN python3 -m pip install 'py_trees==2.1.5' -t py_trees
-RUN python3 -m pip install 'py_trees' -t py_trees
-
+RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/py_trees
+RUN python3 -m pip install 'py_trees==2.1.5' -t /opt/ros/foxy/lib/python3.8/site-packages
+# Downgrade setuptools to stop warnings from py_trees
+RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/py_trees/setuptools
+RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/setuptools
+RUN python3 -m pip install 'setuptools==54.0.0'
 
 # Helper to kill escaped processes
 COPY ./scripts/killros /usr/local/bin
 
 # Ensure ROS environment sourced and display available
 USER dots
-#RUN echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
+#RUN echo "export PYTHONPATH=~/py_trees:$PYTHONPATH" >> ~/.bashrc
+RUN echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
 RUN echo "source ~/nav2_ws/install/setup.bash" >> ~/.bashrc
 RUN echo "source ~/rosbag2_ws/install/setup.bash" >> ~/.bashrc
 RUN echo "source ~/gazebo_ros_pkgs_ws/install/setup.bash" >> ~/.bashrc
-RUN echo "export PYTHONPATH=~/py_trees:$PYTHONPATH" >> ~/.bashrc
 RUN echo "export DISPLAY=:1" >> ~/.bashrc
 
 # Start the servers
