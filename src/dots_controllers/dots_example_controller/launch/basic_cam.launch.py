@@ -121,6 +121,27 @@ def generate_launch_description():
     #--------------------------------------------------------------
 
 
+    cam0_processing_cmd = Node(
+        package     = 'dots_vision',
+        executable  = 'vision',
+        name        = 'cam0_vision',
+        namespace   = robot_name,
+        output      = 'screen',
+        remappings  = remappings + [('img_in', 'cam0/image'), ('img_out', 'cam0_out')],
+        parameters  = [{'use_sim_time'  : use_sim_time,
+                        'cam_name'      : 'camera0'}]
+    )
+
+    cam4_processing_cmd = Node(
+        package     = 'dots_vision',
+        executable  = 'vision',
+        name        = 'cam4_vision',
+        namespace   = robot_name,
+        output      = 'screen',
+        remappings  = remappings + [('img_in', 'cam4/image'), ('img_out', 'cam4_out')],
+        parameters  = [{'use_sim_time'  : use_sim_time,
+                        'cam_name'      : 'camera4'}]
+    )
 
     # Start tf_relay. This listens on the local tf tree and republishes transforms on the global tree 
     # possibly with a prefix added.
@@ -149,6 +170,8 @@ def generate_launch_description():
     ld.add_action(fake_node_cmd)
     ld.add_action(get_robot_urdf_cmd)
     ld.add_action(robot_state_publisher_cmd)
+    ld.add_action(cam0_processing_cmd)
+    ld.add_action(cam4_processing_cmd)
     ld.add_action(tf2_relay_cmd)
 
 
