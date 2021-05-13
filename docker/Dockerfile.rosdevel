@@ -9,12 +9,13 @@ RUN apt-get -y install \
     npm \
     nodejs \
     libnode64 \
-    libboost-dev \
     libtinyxml-dev \
     mercurial \
     cmake \
-    build-essential \
     git
+
+    # libboost-dev \
+    # build-essential \
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
@@ -114,14 +115,14 @@ RUN wget https://github.com/microsoft/vscode-cpptools/releases/download/1.2.2/cp
 &&  code-server --install-extension twxs.cmake \
 &&  /usr/bin/python3 -m pip install -U autopep8 flake8 --user
 
-COPY ./scripts/vscode-ros-dev-vsix.zip ./
+COPY docker/scripts/vscode-ros-dev-vsix.zip ./
 RUN unzip vscode-ros-dev-vsix.zip
 RUN code-server --install-extension vscode-ros-dev.vsix 
 RUN rm vscode-ros-dev*
 
 # Copy in vscode settings
-COPY ./scripts/coder.json .local/share/code-server/
-COPY ./scripts/settings.json .local/share/code-server/User/
+COPY docker/scripts/coder.json .local/share/code-server/
+COPY docker/scripts/settings.json .local/share/code-server/User/
 
 
 # Install gzweb
@@ -219,7 +220,10 @@ RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/setuptools
 RUN python3 -m pip install 'setuptools==54.0.0'
 
 # Helper to kill escaped processes
-COPY ./scripts/killros /usr/local/bin
+COPY docker/scripts/killros /usr/local/bin
+RUN ls 
+COPY docker/scripts/start_simulator .
+RUN chmod +x start_simulator
 
 # Ensure ROS environment sourced and display available
 USER dots

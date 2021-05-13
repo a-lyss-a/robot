@@ -127,7 +127,7 @@ class Process_irtof(py_trees.behaviour.Behaviour):
 
         self.blackboard.new_cmd_vel = cv
 
-        self.node.get_logger().info('%s' % irtof)
+        #self.node.get_logger().info('%s' % irtof)
         return py_trees.common.Status.SUCCESS
 
 
