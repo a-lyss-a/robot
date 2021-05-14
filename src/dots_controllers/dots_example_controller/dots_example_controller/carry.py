@@ -111,6 +111,32 @@ class Process_irtof(py_trees.behaviour.Behaviour):
         #self.node.get_logger().info('%s' % irtof)
         return py_trees.common.Status.SUCCESS
 
+        
+class Process_vision(py_trees.behaviour.Behaviour):
+    def __init__(self, name):
+        super(Process_vision, self).__init__(name)
+        self.blackboard = self.attach_blackboard_client(name)
+        self.blackboard.register_key(key='irtof', access=py_trees.common.Access.READ)
+
+
+    def setup(self, **kwargs):
+        try:
+            self.node = kwargs['node']
+        except KeyError as e:
+            self.node = None
+            print(e)
+
+
+    def update(self):
+        # Return running if the blackboard entry does not yet exist
+        try:
+            irtof = self.blackboard.irtof
+        except KeyError:
+            return py_trees.common.Status.RUNNING
+
+        return py_trees.common.Status.SUCCESS
+
+        
 
 
 def create_root():
@@ -153,6 +179,7 @@ def create_root():
     )
     start_moving    = py_trees.decorators.OneShot(name='Start moving', child=first_cmd_vel)
     proc_irtof      = Process_irtof(name="Proc irtof")
+    proc_vision     = Process_vision(name="Proc vision")
 
     coll_avoid  = py_trees.composites.Selector("Coll avoid")
     coll_check  = py_trees.behaviours.CheckBlackboardVariableValue(name="Clear of obstacles?",
@@ -179,6 +206,7 @@ def create_root():
     root.add_child(priorities)
     priorities.add_child(start_moving)
     priorities.add_child(proc_irtof)
+    priorities.add_child(proc_vision)
     priorities.add_child(coll_avoid)
     priorities.add_child(idle)
     coll_avoid.add_child(coll_check)
@@ -195,7 +223,8 @@ def main():
     rclpy.init()
 
     root = create_root()
-    tree = py_trees_ros.trees.BehaviourTree(root=root, unicode_tree_debug=True)
+    #tree = py_trees_ros.trees.BehaviourTree(root=root, unicode_tree_debug=True)
+    tree = py_trees_ros.trees.BehaviourTree(root=root, unicode_tree_debug=False)
     tree.setup()
     tree.tick_tock(period_ms=100.0)
     rclpy.spin(tree.node)

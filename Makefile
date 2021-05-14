@@ -28,6 +28,9 @@ clean:
 run:
 	GID=$$(id -g) docker-compose -f docker/docker-compose.yaml up --remove-orphans
 
+stop:
+	docker compose -f docker/docker-compose.yaml down
+	docker compose -f docker/docker-compose.controller.yaml down
 
 
 runagent:
@@ -38,7 +41,7 @@ run5agent:
 
 
 
-# Get a browser window with no decorations
+# Get a browser window with no decorations (OSX only)
 vscode:
 	/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --app=http://localhost:8080/?workspace=/home/dots/dots_system/dots.code-workspace --window-size=1600x900
 vncscreen:
