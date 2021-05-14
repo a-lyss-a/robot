@@ -12,6 +12,9 @@ buildimg:
 buildctrl:
 	(export GID=$$(id -g); export HOSTOSTYPE=$(UNAME); docker-compose -f docker/docker-compose.controller.yaml build)
 
+
+
+
 clean:
 	rm -rf build install log
 

@@ -92,7 +92,7 @@ def generate_launch_description():
     # and write it to a temporary local file.
     get_robot_urdf_cmd = Node(
         condition   = IfCondition(use_sim_time),
-        package     = 'dots_sim_support',
+        package     = 'urdf_prefix',
         executable  = 'urdf_prefix',
         namespace   = robot_name,
         output      = 'screen',
