@@ -62,7 +62,7 @@ source install/setup.bash
 ```
 This will traverse the packages in the ```src``` directory, compile C++ code, then install C++ and Python executables and support files. These are placed in the ```install``` directory. The ```source``` command makes the just installed packages visible to the ROS system. To run an example, do:
 ```
-ros2 launch dots_sim run_2_explore.launch.py
+ros2 launch dots_example_controller run_2_explore.launch.py use_gzclient:=true
 ```
 This will start the Gazebo simulator GUI in the Linux desktop, then spawn two robots at different locations within the simulated world. It should look like this:
 ![](images/gazebo.jpg)
@@ -75,7 +75,7 @@ There is experimental support for [GZWeb](http://gazebosim.org/gzweb.html). This
 
 For example, run the explore example like:
 ```
-ros2 launch dots_sim run_2_explore.launch.py use_gzweb:=true
+ros2 launch dots_example_controller run_2_explore.launch.py use_gzweb:=true
 ```
 It should look like this:
 ![](images/gzweb.jpg)
@@ -102,6 +102,33 @@ In another terminal, send a velocity command to the robot launched in the previo
 ros2 topic pub /r1/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 1.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 2.0}}"
 ```
 
+## Working with submodules
+The project structure uses git submodules. These are separate git repositories within the directory structure of a master git repo. The project is arranged like this because the submodule repos contain standard ROS2 packages or collections of packages, which will be used elsewhere.
+
+The master repo contains infrastructure to support building and running the Docker development environment. The master repo contains references to particular commits of each submodule repo.
+
+Clone whole environment:
+```
+git clone --recursive git@bitbucket.org:hauertlab/dots_system.git
+```
+Get all updates:
+```
+git pull
+git submodule update
+```
+Most of the time, you will be working within the main repo, creating and modifying ROS packages under the ```src/dots_controllers``` directory. Working in this way, the standard git commands work as normal:
+```
+
+# Get updates from remote
+git pull            
+<make edits and changes>
+# Commit the changes
+git commit -am 'commit message'
+# Push changes to remote
+git push
+```
+
+
 ## Interface links
 |Link|Interface|
 |-|-|
@@ -114,7 +141,227 @@ ros2 topic pub /r1/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 1.0, y: 0.0, z:
 The example controller source code is in ```src/dots_gazebo/dots_example_controller/dots_example_controller/explore.py```.
 
 ## Issues
-Sometimes the linux desktop does not correctly size to the window size. Only fix so far is to ctrl-c the docker session and restart with `make run`.
+Sometimes the linux desktop does not correctly size to the window size. Sometimes reloading the page in the browser fixes this. If not, the only other fix so far is to ctrl-c the docker session and restart with `make run`.
 
 
 Sometimes the Gazebo simulator doesn't corectly stop when  ctrl-c'd. A new simulation won't start because another copy is already running, there will be an error message like `EXCEPTION: Unable to start server[bind: Address already in use]. There is probably another Gazebo process running`. Fix, do `killall gzserver gzclient` before starting new simulation.
+
+
+# Useful stuff
+
+## Setting goal pose for navigator
+```
+ros2 topic pub -1 /robot_deadbeef/goal_pose geometry_msgs/PoseStamped "{header: {stamp: {sec: 0}, frame_id: 'odom'}, pose: {position: {x: 1.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}"
+```
+
+## Create TF tree pdf
+```
+ros2 run tf2_tools view_frames.py
+```
+Creates a PDF in the current directory of the TF tree.
+## Killing left over processes
+Its common after ctrl-c for some processes to not get shut down properly, particularly the Gazebo server. Included in the environment is the scripts ```killros```, this kills all processes that have been started in that terminal shell. 
+
+## Working with submodules
+To get changes, esp if after changed branch:
+```
+git submodule update
+```
+This results in submodules being in 'detached HEAD' state. In order to work on them, it is important to checkout a branch first before committing, e.g, assuming some changes have been made but not yet committed:
+```
+Simons-iMac-Pro:dots_nav simonj$ git branch -a
+* (HEAD detached at bf814e0)
+  hacks
+  master
+  remotes/origin/HEAD -> origin/master
+  remotes/origin/hacks
+  remotes/origin/master
+Simons-iMac-Pro:dots_nav simonj$ git checkout hacks
+M	dots_exp_bringup/launch/run_1_nav_real.launch.py
+Previous HEAD position was bf814e0 Initial real robot sort of working, speed and accel not working correctly in omni controller
+Switched to branch 'hacks'
+Your branch is up to date with 'origin/hacks'.
+Simons-iMac-Pro:dots_nav simonj$ git commit -am 'Moved efk launcher here'
+[hacks d6eced8] Moved efk launcher here
+ 2 files changed, 198 insertions(+), 1 deletion(-)
+ create mode 100644 dots_exp_bringup/launch/basic_with_ekf.launch.py
+Simons-iMac-Pro:dots_nav simonj$ git push
+Enumerating objects: 10, done.
+Counting objects: 100% (10/10), done.
+Delta compression using up to 16 threads
+Compressing objects: 100% (6/6), done.
+Writing objects: 100% (6/6), 2.67 KiB | 2.67 MiB/s, done.
+Total 6 (delta 3), reused 0 (delta 0)
+remote: 
+remote: Create pull request for hacks:
+remote:   https://bitbucket.org/hauertlab/dots_nav/pull-requests/new?source=hacks&t=1
+remote: 
+To bitbucket.org:hauertlab/dots_nav.git
+   f8565df..d6eced8  hacks -> hacks
+Simons-iMac-Pro:dots_nav simonj$ 
+
+```
+
+### Nav2
+```
+# structure
+├── dots_system
+│   ├── docker
+│   │   └── scripts
+│   ├── images
+│   └── src
+│       ├── dots_gazebo
+│       │   ├── dots_example_controller
+│       │   ├── dots_sim
+│       │   ├── dots_sim_support
+│       │   └── gazebo_plugins
+│       ├── dots_nav
+│       │   ├── dots_exp_bringup
+│       │   ├── dots_experiments
+│       │   └── dots_omni_controller
+│       └── dots_support
+│           └── dots_tf_tools
+├── nav2_ws
+│   └── src
+│       └── navigation2
+│           ├── doc
+│           ├── nav2_amcl
+│           ├── nav2_behavior_tree
+│           ├── nav2_bringup
+│           ├── nav2_bt_navigator
+│           ├── nav2_common
+│           ├── nav2_controller
+│           ├── nav2_core
+│           ├── nav2_costmap_2d
+│           ├── nav2_dwb_controller
+│           ├── nav2_lifecycle_manager
+│           ├── nav2_map_server
+│           ├── nav2_msgs
+│           ├── nav2_navfn_planner
+│           ├── nav2_planner
+│           ├── nav2_recoveries
+│           ├── nav2_regulated_pure_pursuit_controller
+│           ├── nav2_rviz_plugins
+│           ├── nav2_smac_planner
+│           ├── nav2_system_tests
+│           ├── nav2_util
+│           ├── nav2_voxel_grid
+│           ├── nav2_waypoint_follower
+│           ├── navigation2
+│           └── tools
+└── nav2_ws_arm
+    └── src -> ../nav2_ws/src
+
+
+
+
+cd dots_project
+mkdir -p nav2_ws/src
+cd nav2_ws/src
+git clone https://simonj23@bitbucket.org/simonj23/navigation2.git --branch foxy-devel
+
+
+
+
+cd dots_project/nav2_ws_arm
+rosdep update
+rosdep install -y -r -q --from-paths src --ignore-src --rosdistro foxy
+```
+## Building navigator2 on robot
+Now working in ~simonj for git access. 
+Making different ros2 workspace and softlinking to code.
+To build navigation2, needed to install:
+```
+ros-foxy-test-msgs
+ros-foxy-behaviortree-cpp-v3
+libgraphicsmagick++1-dev
+ros-foxy-rviz-common
+ros-foxy-rviz-default-plugins
+ros-foxy-angles
+libceres-dev
+ros-foxy-ompl
+ros-foxy-slam-toolbox
+graphicsmagick-libmagick-dev-compat
+ros-foxy-gazebo-ros-pkgs
+lcov
+python3-zmq
+..
+
+
+# Install with:
+#
+rosdep update
+rosdep install -y -r -q --from-paths src --ignore-src --rosdistro foxy
+
+```
+
+
+```
+bringup_ws                  workspace for robot node hardware
+    src
+        dots_bringup        git repo
+            dots_hardware   ros package
+            dots_support    ros package
+server_ws                   workspace for server gui, estop, data logging, optitrack
+    src
+        dots_server         git repo
+            controlui       ros package
+            dots_aux        ros package
+dots_system                 development environment, workspace for controller, gazebo
+    src
+        dots_gazebo         git repo
+            dots_example_controller
+            dots_sim
+            dots_sim_support
+            gazebo_plugins
+        dots_nav            git repo
+            dots_exp_bringup
+            dots_experiments
+            dots_omni_controller
+        dots_support        git repo
+            dots_tf_tools
+
+nav2_ws                     workspace for current foxy_devel branch of navigation2
+    src
+        navigation2
+
+
+dots_system_arm             workspaces for arm builds, softlinked src directory
+nav2_ws_arm
+```
+
+Until the kubernetes stuff is running, use scripts in dots_server to have a unified launch of things on robots.
+
+Groundtruth code needed hacking to make output topic <body>/ground_truth. Should be rewritten to conform to ROS stamdards.
+
+Bringup process:
+```
+1. Start Optitrack
+    cd groundtruth/build
+    ./talker 10.0.0.65 (or whatever IP of windows PC is)
+
+2. Start robot nodes (in bringup_ws)
+    ros2 launch dots_hardware dots_node.launch.py
+
+3. Start GUI (in server_ws)
+    ros2 launch dots_gui control.launch.py
+
+4. Start rviz (in dots_system)
+    ros2 launch dots_exp_bringup run_1_rviz.launch.py robot_name:=robot_7a46592c
+
+5. Start robot controller
+    ros2 launch dots_exp_bringup run_1_nav_real.launch.py robot_name:=robot_7a46592c
+```
+Same thing in simulation:
+```
+1. Start rviz and gazebo (in dots_system)
+    ros2 launch dots_exp_bringup run_1_rviz.launch.py use_gazebo:=true use_gzclient:=true
+
+2. Start robot controller
+    ros2 launch dots_exp_bringup run_1_nav_real.launch.py use_sim_time:=true 
+
+
+```
+
+
+

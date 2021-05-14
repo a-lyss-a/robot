@@ -9,12 +9,13 @@ RUN apt-get -y install \
     npm \
     nodejs \
     libnode64 \
-    libboost-dev \
     libtinyxml-dev \
     mercurial \
     cmake \
-    build-essential \
     git
+
+    # libboost-dev \
+    # build-essential \
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
@@ -45,6 +46,8 @@ RUN apt-get -y install ros-robot-state-publisher ros-foxy-angles
 RUN apt-get -y install ros-foxy-teleop-twist-keyboard
 RUN apt-get -y install ros-foxy-rviz2
 RUN apt-get -y install ros-foxy-test-msgs 
+RUN apt-get update
+RUN apt-get -y install ros-foxy-py-trees-ros ros-foxy-py-trees-ros-tutorials ros-foxy-py-trees-ros-viewer
 RUN apt-get -y install python3-argcomplete python3-vcstool python3-rosdep \
         python3-colcon-common-extensions python3-pip
 RUN apt-get -y install psmisc
@@ -67,14 +70,16 @@ RUN apt-get update && apt-get install -y \
 # Make user
 ARG UID
 ARG GID
+ARG HOSTOSTYPE
 ENV SHELL=/bin/bash
-RUN bash -c 'if [[ ${OSTYPE} == linux-gnu ]] ; then addgroup --gid ${GID} user ; fi'
+RUN bash -c 'echo ${HOSTOSTYPE}'
+RUN bash -c 'if [[ ${HOSTOSTYPE} == Linux ]] ; then addgroup --gid ${GID} user ; fi'
 RUN adduser --gecos '' --disabled-password --uid $UID --gid $GID dots \
 &&  adduser dots sudo \
 &&  echo "dots ALL=(ALL_ NOPASSWD:ALL" >> /etc/sudoers.d/nopasswd
 
 # Fetch and build the aruco library
-RUN git clone https://siteks@bitbucket.org/siteks/aruco-3.0.0.git
+RUN git clone https://siteks@bitbucket.org/siteks/aruco-3.0.0.git --depth 1
 RUN mkdir -p aruco-3.0.0/build
 WORKDIR aruco-3.0.0/build
 RUN cmake -DCMAKE_BUILD_TYPE=Release ..
@@ -110,14 +115,14 @@ RUN wget https://github.com/microsoft/vscode-cpptools/releases/download/1.2.2/cp
 &&  code-server --install-extension twxs.cmake \
 &&  /usr/bin/python3 -m pip install -U autopep8 flake8 --user
 
-COPY ./scripts/vscode-ros-dev-vsix.zip ./
+COPY docker/scripts/vscode-ros-dev-vsix.zip ./
 RUN unzip vscode-ros-dev-vsix.zip
 RUN code-server --install-extension vscode-ros-dev.vsix 
 RUN rm vscode-ros-dev*
 
 # Copy in vscode settings
-COPY ./scripts/coder.json .local/share/code-server/
-COPY ./scripts/settings.json .local/share/code-server/User/
+COPY docker/scripts/coder.json .local/share/code-server/
+COPY docker/scripts/settings.json .local/share/code-server/User/
 
 
 # Install gzweb
@@ -153,10 +158,80 @@ RUN cd ~/gzweb/http/client/assets/media/materials/textures \
     && for f in *jpg; do convert $f ${f%.*}.png; done
 
 
+USER root
+RUN apt-get update && apt-get -y install ros-foxy-robot-localization
+
+
+# Get and build the latest Navigation2 for Foxy because lots of changes
+# and updates since official Foxy release.
+# https://navigation.ros.org/build_instructions/index.html#build
+WORKDIR /home/dots
+RUN mkdir -p nav2_ws/src
+WORKDIR nav2_ws/src
+RUN ls -l
+RUN git clone https://simonj23@bitbucket.org/simonj23/navigation2.git --branch foxy-devel --depth 1
+WORKDIR ..
+RUN bash -c 'source /opt/ros/foxy/setup.bash \
+&&  rosdep init \
+&&  rosdep update \
+&&  rosdep install -y -r -q --from-paths src --ignore-src --rosdistro foxy \
+&&  colcon build --symlink-install'
+
+# Get and build modified copy of gazebo_ros_pkgs due to issues
+# https://github.com/ros-simulation/gazebo_ros_pkgs/issues/1247
+# https://github.com/ros-simulation/gazebo_ros_pkgs/issues/1211
+# Without this hack to set the update rate of the /clock topic to 100Hz, from
+# the default of 10Hz, various nodes such as robot_localization 
+# do not run at the required rate
+WORKDIR /home/dots
+RUN mkdir -p gazebo_ros_pkgs_ws/src
+WORKDIR gazebo_ros_pkgs_ws/src
+RUN ls -l
+RUN git clone https://simonj23@bitbucket.org/simonj23/gazebo_ros_pkgs.git --branch foxy --depth 1
+WORKDIR ..
+RUN bash -c 'source /opt/ros/foxy/setup.bash \
+&&  colcon build --symlink-install --packages-select gazebo_dev gazebo_msgs gazebo_ros'
+
+# Get latest rosbag2 that will subscribe to all topics, regardless of qos settings.
+# This version breaks te API and will not show up as a backport, but fixes many
+# performance bugs and weird behaviours.
+# This is forked off the official repo with a couple of build bugs fixed.
+# https://github.com/ros2/rosbag2/issues/657
+WORKDIR /home/dots
+RUN apt-get update && apt-get -y install python3-pybind11 python3-json-tricks
+RUN mkdir -p rosbag2_ws/src
+WORKDIR rosbag2_ws/src
+RUN ls -l
+RUN git clone https://simonj23@bitbucket.org/simonj23/rosbag2.git --branch foxy-future --depth 1
+WORKDIR ..
+RUN bash -c 'source /opt/ros/foxy/setup.bash \
+&&  colcon build --merge-install'
+
+# Get version 2.1.5 of py_trees, which has proper mem/non-mem semantics. The
+# version in the foxy apt packages is 2.1.2. Then remove the new setuptools and
+# downgrade to one that doesn't give deprecatipn warnings. I'm sure there is a 
+# better way of doing this..
+WORKDIR /home/dots
+RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/py_trees
+RUN python3 -m pip install 'py_trees==2.1.5' -t /opt/ros/foxy/lib/python3.8/site-packages
+# Downgrade setuptools to stop warnings from py_trees
+RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/py_trees/setuptools
+RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/setuptools
+RUN python3 -m pip install 'setuptools==54.0.0'
+
+# Helper to kill escaped processes
+COPY docker/scripts/killros /usr/local/bin
+RUN ls 
+COPY docker/scripts/start_simulator .
+RUN chmod +x start_simulator
 
 # Ensure ROS environment sourced and display available
 USER dots
+#RUN echo "export PYTHONPATH=~/py_trees:$PYTHONPATH" >> ~/.bashrc
 RUN echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
+RUN echo "source ~/nav2_ws/install/setup.bash" >> ~/.bashrc
+RUN echo "source ~/rosbag2_ws/install/setup.bash" >> ~/.bashrc
+RUN echo "source ~/gazebo_ros_pkgs_ws/install/setup.bash" >> ~/.bashrc
 RUN echo "export DISPLAY=:1" >> ~/.bashrc
 
 # Start the servers
