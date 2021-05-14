@@ -52,7 +52,7 @@ def generate_launch_description():
         executable  = 'spawn_entity.py',
         output      = 'screen',
         arguments   = [ '-topic', PythonExpression(['"/', robot_name, '/robot_description"']),
-                        '-spawn_service_timeout', '30',
+                        '-spawn_service_timeout', '300',
                         '-robot_namespace', PythonExpression(['"', robot_name, '"']),
                         PythonExpression(['"-x %f" % float("', robot_pose, '".split(",")[0])']),  
                         PythonExpression(['"-y %f" % float("', robot_pose, '".split(",")[1])']),  
