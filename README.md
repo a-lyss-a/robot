@@ -1,6 +1,9 @@
-## Dots development environment
+# Dots development environment
 
 This is the Dots development environment. It is based on Docker containers, so it can run on Windows, Linux, and OSX. The directory where the environment is started is mounted within the environment so all changes are persistant.
+
+
+
 
 ## Prerequisites
 - Working Docker installation
@@ -49,11 +52,17 @@ The [Linux desktop](http://localhost:8081/) is a web-based VNC view into a stand
 To make sure everything is working, open a terminal in the vscode window by going Menu (top left)->Terminal->New terminal. This places you in a ROS2 workspace with the various packages for the simulator and example controller below the ```src``` directory. The simplified package structure is:
 ```
 src
-└── dots_gazebo
-    ├── dots_example_controller     Example python controller performing random walk
-    ├── dots_sim                    Gazebo simulator
-    ├── dots_sim_support            Support files for the simulator
-    └── gazebo_plugins              Simulator plugins for lifting mechanism, the coloured leds and motor drive
+├── dots_controllers
+│   └── dots_example_controller
+├── dots_gazebo
+│   ├── dots_sim
+│   ├── dots_sim_support
+│   └── gazebo_plugins
+└── dots_support
+    ├── bagparse
+    ├── dots_tf_tools
+    ├── dots_vision
+    └── urdf_prefix
 ```
 To build the packages, do:
 ```
@@ -82,12 +91,16 @@ It should look like this:
 
 
 ## Developing
-The general development flow is to make changes to your code, do ```colcon build --symlink-install```, then try out your changes. Its only necessary to do ```source install/setup.bash``` in a new terminal or after building for the first time. If you make changes to Python code, it is not usually necessary to do ```colcon build``` since symbolic links are installed for interpreted code, but sometimes this doesn't seem to work.
+The general development flow is to make changes to your code, do ```colcon build --symlink-install```, then try out your changes. Its only necessary to do ```source install/setup.bash``` in a new terminal or after building for the first time. If you make changes to Python code, it is not usually necessary to do ```colcon build``` since symbolic links are installed for interpreted code, but sometimes this doesn't seem to work. You can build just the package you are working on, e.g:
+```
+colcon build --symlink-install --packages-select dots_example_controller
+```
+which helps if you are working on a slow machine.
 
 It is possible to start various parts separately, you might often want to e.g. have the simulator running while manually starting robots.
 Some possible examples, launch with the Rviz2 app to visualise robot sense data:
 ```
-ros2 launch dots_sim run_2_explore.launch.py rviz:=true
+ros2 launch dots_example_controller run_2_explore.launch.py use_rviz:=true use_gzweb:=true
 ```
 Just launch gazebo:
 ```
@@ -103,9 +116,7 @@ ros2 topic pub /r1/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 1.0, y: 0.0, z:
 ```
 
 ## Working with submodules
-The project structure uses git submodules. These are separate git repositories within the directory structure of a master git repo. The project is arranged like this because the submodule repos contain standard ROS2 packages or collections of packages, which will be used elsewhere.
-
-The master repo contains infrastructure to support building and running the Docker development environment. The master repo contains references to particular commits of each submodule repo.
+The project structure uses a git submodule for the simulator. This is a separate git repository within the directory structure of a master git repo. 
 
 Clone whole environment:
 ```
@@ -116,7 +127,7 @@ Get all updates:
 git pull
 git submodule update
 ```
-Most of the time, you will be working within the main repo, creating and modifying ROS packages under the ```src/dots_controllers``` directory. Working in this way, the standard git commands work as normal:
+You will be working within the main repo, creating and modifying ROS packages under the ```src/dots_controllers``` directory. Working in this way, the standard git commands work as normal:
 ```
 
 # Get updates from remote
@@ -144,15 +155,76 @@ The example controller source code is in ```src/dots_gazebo/dots_example_control
 Sometimes the linux desktop does not correctly size to the window size. Sometimes reloading the page in the browser fixes this. If not, the only other fix so far is to ctrl-c the docker session and restart with `make run`.
 
 
-Sometimes the Gazebo simulator doesn't corectly stop when  ctrl-c'd. A new simulation won't start because another copy is already running, there will be an error message like `EXCEPTION: Unable to start server[bind: Address already in use]. There is probably another Gazebo process running`. Fix, do `killall gzserver gzclient` before starting new simulation.
+Sometimes the Gazebo simulator doesn't corectly stop when  ctrl-c'd. A new simulation won't start because another copy is already running, there will be an error message like `EXCEPTION: Unable to start server[bind: Address already in use]. There is probably another Gazebo process running`. We have defined a script to kill all ROS processes that have been started in a terminal, do `killros` before starting new simulation.
+
+
+# Technical details
+The development environment is designed to model the Dots robots physical hardware in some detail but not with extreme accuracy or where that would compromise simulation speed excessively.
+
+## Robot hardware
+The robots are circular, 250mm in diameter, with a lifting platform on top. They have the following specifications:
+
+|Spec|Value|Notes|
+|-|-|-|
+|Mass|3kg||
+|Battery life|6 hours||
+|Drive|Holonomic||
+|Linear velocity|1.0m/s||
+|Angular velocity|6rad/s||
+|16x laser range finders|2m range|50Hz update|
+|Perimeter cameras|640x480 120 degree|Overlapping vision all round|
+|Lifter camera|640x480 120 degree|Upwards facing in centre of lifter|
+|16x perimeter RGB leds||
+|Processor|Rockpi4B|RK3399, 6 core, 4Gbyte ram|
+
+
+## Multiple robots
+Using multiple robots under ROS has not been the primary focus, so, particularly with ROS2 it is necessary to define how they will interact. We use the following approach:
+- All nodes are namespaced with the robot name
+- The robot model URDF is processed to prefix link names and topic names associated with plugins with the robot name
+- The transform tree topics are remapped from absolute to relative ```/tf``` to ```tf```, and ```/tf_static``` to ```tf_static```. This means each robot has its own transform tree
+- Each robot has a ```tf2_relay``` node, that echos a subset of topics to the global ```tf``` tree.
+
+### Connectivity
+ROS2 is decentralised and allows all robots to see any topics on the network. We don't prevent this, but any developer must be aware that using topics from another robot is inherently unreliable, as they will depend on WiFi and be prone to interference. Swarm solutions would tend to use local information.
+
+## Topics
+In the real robot there is a node talking to the hardware that provides many of these topics. In simulation, some are provided by Gazebo plugins, and some by a node called fake_dots_node.
+
+|Topic|Type|Notes|
+|-|-|-|
+|battery_state|sensor_msgs.BatteryState|Simulation always shows 80%|
+|cam0/camera_info
+|cam0/image|sensor_msgs.Image|Front left camera|
+|cam0_out|sensor_msgs.Image|Annotated with Aruco tags|
+|cam1/camera_info
+|cam1/image|sensor_msgs.Image|Back left camera|
+|cam1_out|sensor_msgs.Image|Annotated with Aruco tags|
+|cam2/camera_info
+|cam2/image|sensor_msgs.Image|Back right camera|
+|cam2_out|sensor_msgs.Image|Annotated with Aruco tags|
+|cam3/camera_info
+|cam3/image|sensor_msgs.Image|Front right camera|
+|cam3_out|sensor_msgs.Image|Annotated with Aruco tags|
+|cam4/camera_info
+|cam4/image|sensor_msgs.Image|Upwards facing lifter camera|
+|cam4_out|sensor_msgs.Image|Annotated with Aruco tags|
+|cmd_vel|geometry_msgs.Twist|Sets the robot velocity, response is not instant but this is the least accurate part of the model|
+|led|std_msgs.Int32MultiArray|Exactly 16 entries, one for each LED, blue=bits[23:16], green=bits[15:8], red=bits[7:0]|
+|lifter|std_msgs.Bool|Send False to lower, True to raise. This will be controlled by an action server in future|
+|odom|nav_msgs.Odometry|Feedback of position and velocity estimates from wheel encoders|
+|sensor/imu|sensor_msgs/Imu|Feedback of angular velocity and linear acceleration from IMU sensor|
+|sensor/scan|sensor_msgs/PointCloud2|Range data from the 16 time of flight sensors|
+|sensor/compass|std_msgs/Float32|Heading of the robot. In simulation this is derived from the simulator ground truth with some Gaussian noise sigma=0.1 added. Heading 0 is east (+x)|
+
+There are other topics but these cannot be relied on in the real robots. For example, each robots pose is published on the ```ground_truth``` topic.
+
+
 
 
 # Useful stuff
 
-## Setting goal pose for navigator
-```
-ros2 topic pub -1 /robot_deadbeef/goal_pose geometry_msgs/PoseStamped "{header: {stamp: {sec: 0}, frame_id: 'odom'}, pose: {position: {x: 1.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}"
-```
+
 
 ## Create TF tree pdf
 ```
@@ -162,206 +234,6 @@ Creates a PDF in the current directory of the TF tree.
 ## Killing left over processes
 Its common after ctrl-c for some processes to not get shut down properly, particularly the Gazebo server. Included in the environment is the scripts ```killros```, this kills all processes that have been started in that terminal shell. 
 
-## Working with submodules
-To get changes, esp if after changed branch:
-```
-git submodule update
-```
-This results in submodules being in 'detached HEAD' state. In order to work on them, it is important to checkout a branch first before committing, e.g, assuming some changes have been made but not yet committed:
-```
-Simons-iMac-Pro:dots_nav simonj$ git branch -a
-* (HEAD detached at bf814e0)
-  hacks
-  master
-  remotes/origin/HEAD -> origin/master
-  remotes/origin/hacks
-  remotes/origin/master
-Simons-iMac-Pro:dots_nav simonj$ git checkout hacks
-M	dots_exp_bringup/launch/run_1_nav_real.launch.py
-Previous HEAD position was bf814e0 Initial real robot sort of working, speed and accel not working correctly in omni controller
-Switched to branch 'hacks'
-Your branch is up to date with 'origin/hacks'.
-Simons-iMac-Pro:dots_nav simonj$ git commit -am 'Moved efk launcher here'
-[hacks d6eced8] Moved efk launcher here
- 2 files changed, 198 insertions(+), 1 deletion(-)
- create mode 100644 dots_exp_bringup/launch/basic_with_ekf.launch.py
-Simons-iMac-Pro:dots_nav simonj$ git push
-Enumerating objects: 10, done.
-Counting objects: 100% (10/10), done.
-Delta compression using up to 16 threads
-Compressing objects: 100% (6/6), done.
-Writing objects: 100% (6/6), 2.67 KiB | 2.67 MiB/s, done.
-Total 6 (delta 3), reused 0 (delta 0)
-remote: 
-remote: Create pull request for hacks:
-remote:   https://bitbucket.org/hauertlab/dots_nav/pull-requests/new?source=hacks&t=1
-remote: 
-To bitbucket.org:hauertlab/dots_nav.git
-   f8565df..d6eced8  hacks -> hacks
-Simons-iMac-Pro:dots_nav simonj$ 
-
-```
-
-### Nav2
-```
-# structure
-├── dots_system
-│   ├── docker
-│   │   └── scripts
-│   ├── images
-│   └── src
-│       ├── dots_gazebo
-│       │   ├── dots_example_controller
-│       │   ├── dots_sim
-│       │   ├── dots_sim_support
-│       │   └── gazebo_plugins
-│       ├── dots_nav
-│       │   ├── dots_exp_bringup
-│       │   ├── dots_experiments
-│       │   └── dots_omni_controller
-│       └── dots_support
-│           └── dots_tf_tools
-├── nav2_ws
-│   └── src
-│       └── navigation2
-│           ├── doc
-│           ├── nav2_amcl
-│           ├── nav2_behavior_tree
-│           ├── nav2_bringup
-│           ├── nav2_bt_navigator
-│           ├── nav2_common
-│           ├── nav2_controller
-│           ├── nav2_core
-│           ├── nav2_costmap_2d
-│           ├── nav2_dwb_controller
-│           ├── nav2_lifecycle_manager
-│           ├── nav2_map_server
-│           ├── nav2_msgs
-│           ├── nav2_navfn_planner
-│           ├── nav2_planner
-│           ├── nav2_recoveries
-│           ├── nav2_regulated_pure_pursuit_controller
-│           ├── nav2_rviz_plugins
-│           ├── nav2_smac_planner
-│           ├── nav2_system_tests
-│           ├── nav2_util
-│           ├── nav2_voxel_grid
-│           ├── nav2_waypoint_follower
-│           ├── navigation2
-│           └── tools
-└── nav2_ws_arm
-    └── src -> ../nav2_ws/src
-
-
-
-
-cd dots_project
-mkdir -p nav2_ws/src
-cd nav2_ws/src
-git clone https://simonj23@bitbucket.org/simonj23/navigation2.git --branch foxy-devel
-
-
-
-
-cd dots_project/nav2_ws_arm
-rosdep update
-rosdep install -y -r -q --from-paths src --ignore-src --rosdistro foxy
-```
-## Building navigator2 on robot
-Now working in ~simonj for git access. 
-Making different ros2 workspace and softlinking to code.
-To build navigation2, needed to install:
-```
-ros-foxy-test-msgs
-ros-foxy-behaviortree-cpp-v3
-libgraphicsmagick++1-dev
-ros-foxy-rviz-common
-ros-foxy-rviz-default-plugins
-ros-foxy-angles
-libceres-dev
-ros-foxy-ompl
-ros-foxy-slam-toolbox
-graphicsmagick-libmagick-dev-compat
-ros-foxy-gazebo-ros-pkgs
-lcov
-python3-zmq
-..
-
-
-# Install with:
-#
-rosdep update
-rosdep install -y -r -q --from-paths src --ignore-src --rosdistro foxy
-
-```
-
-
-```
-bringup_ws                  workspace for robot node hardware
-    src
-        dots_bringup        git repo
-            dots_hardware   ros package
-            dots_support    ros package
-server_ws                   workspace for server gui, estop, data logging, optitrack
-    src
-        dots_server         git repo
-            controlui       ros package
-            dots_aux        ros package
-dots_system                 development environment, workspace for controller, gazebo
-    src
-        dots_gazebo         git repo
-            dots_example_controller
-            dots_sim
-            dots_sim_support
-            gazebo_plugins
-        dots_nav            git repo
-            dots_exp_bringup
-            dots_experiments
-            dots_omni_controller
-        dots_support        git repo
-            dots_tf_tools
-
-nav2_ws                     workspace for current foxy_devel branch of navigation2
-    src
-        navigation2
-
-
-dots_system_arm             workspaces for arm builds, softlinked src directory
-nav2_ws_arm
-```
-
-Until the kubernetes stuff is running, use scripts in dots_server to have a unified launch of things on robots.
-
-Groundtruth code needed hacking to make output topic <body>/ground_truth. Should be rewritten to conform to ROS stamdards.
-
-Bringup process:
-```
-1. Start Optitrack
-    cd groundtruth/build
-    ./talker 10.0.0.65 (or whatever IP of windows PC is)
-
-2. Start robot nodes (in bringup_ws)
-    ros2 launch dots_hardware dots_node.launch.py
-
-3. Start GUI (in server_ws)
-    ros2 launch dots_gui control.launch.py
-
-4. Start rviz (in dots_system)
-    ros2 launch dots_exp_bringup run_1_rviz.launch.py robot_name:=robot_7a46592c
-
-5. Start robot controller
-    ros2 launch dots_exp_bringup run_1_nav_real.launch.py robot_name:=robot_7a46592c
-```
-Same thing in simulation:
-```
-1. Start rviz and gazebo (in dots_system)
-    ros2 launch dots_exp_bringup run_1_rviz.launch.py use_gazebo:=true use_gzclient:=true
-
-2. Start robot controller
-    ros2 launch dots_exp_bringup run_1_nav_real.launch.py use_sim_time:=true 
-
-
-```
 
 
 
