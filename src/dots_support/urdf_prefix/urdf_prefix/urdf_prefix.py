@@ -62,6 +62,11 @@ class Controller(Node):
                     x = i.find('joint_name')
                     x.text = self.prefix.value + x.text
 
+                elif i.attrib['filename'] == 'libgazebo_ros_camera.so':
+                    x = i.find('frame_name')
+                    if x != None:
+                        x.text = self.prefix.value + x.text
+
 
         tree.write('/tmp/%s.urdf' % self.filename.value)
         # msg.data = '<?xml version="1.0" ?>' + ET.tostring(root, encoding='unicode', method='xml')

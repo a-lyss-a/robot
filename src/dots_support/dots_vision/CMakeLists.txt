@@ -62,7 +62,8 @@ if(BUILD_TESTING)
 endif()
 
 
-# Install launch files.
+# Install launch and params files.
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}/)
+install(DIRECTORY params DESTINATION share/${PROJECT_NAME}/)
 
 ament_package()

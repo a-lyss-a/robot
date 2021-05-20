@@ -98,7 +98,7 @@ def generate_launch_description():
         output      = 'screen',
         remappings  = [('in_robot_description', '/robot_description')],
         parameters  = [{'filename' : robot_name,
-                        'prefix' : PythonExpression(['"', robot_name, '_"'])
+                        #'prefix' : PythonExpression(['"', robot_name, '_"'])
                         }],
     )
 
@@ -133,7 +133,7 @@ def generate_launch_description():
                         ('out/tf_static',   '/tf_static'),
                         ('in/tf',           'tf'),
                         ('in/tf_static',    'tf_static')],
-        parameters  = [ #{'prefix' : PythonExpression(['"', robot_name, '_"'])},
+        parameters  = [ {'prefix' : PythonExpression(['"', robot_name, '_"'])},
                         {'exclude_frames' : ['map', 'odom']}]
     )
 

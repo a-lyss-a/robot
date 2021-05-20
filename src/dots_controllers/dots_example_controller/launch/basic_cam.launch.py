@@ -29,8 +29,9 @@ that another node has been launch that provides the URDF on the topic /robot_des
 
 def generate_launch_description():
     
-    pkg_share       = get_package_share_directory('dots_example_controller')
-    dots_sim_share  = get_package_share_directory('dots_sim')
+    pkg_share           = get_package_share_directory('dots_example_controller')
+    dots_sim_share      = get_package_share_directory('dots_sim')
+    dots_vision_share   = get_package_share_directory('dots_vision')
 
     use_sim_time    = LaunchConfiguration('use_sim_time')
     robot_name      = LaunchConfiguration('robot_name')    
@@ -108,6 +109,7 @@ def generate_launch_description():
         cmd         = ['./rsp_helper.sh', PythonExpression(['"/tmp/', robot_name, '.urdf"']),
                         '--ros-args', 
                         '-p', 'use_sim_time:=True',
+                        '-p', 'use_tf_static:=False',
                         '-r', PythonExpression(['"__ns:=/', robot_name, '"']),
                         '-r', PythonExpression(['"/tf:=tf"']),
                         '-r', PythonExpression(['"/tf_static:=tf_static"']),
@@ -127,9 +129,54 @@ def generate_launch_description():
         name        = 'cam0_vision',
         namespace   = robot_name,
         output      = 'screen',
-        remappings  = remappings + [('img_in', 'cam0/image'), ('img_out', 'cam0_out')],
-        parameters  = [{'use_sim_time'  : use_sim_time,
-                        'cam_name'      : 'camera0'}]
+        remappings  = remappings + [('img_in', 'cam0/image'), 
+                                    ('img_out', 'cam0_out'), 
+                                    ('tags_out', 'cam0_tags')],
+        parameters  = [{'use_sim_time'  : use_sim_time},
+                       {'cam_name'      : 'cam0'},
+                       {'frame_prefix'  : PythonExpression(['"', robot_name, '_"'])}]
+    )
+
+    cam1_processing_cmd = Node(
+        package     = 'dots_vision',
+        executable  = 'vision',
+        name        = 'cam1_vision',
+        namespace   = robot_name,
+        output      = 'screen',
+        remappings  = remappings + [('img_in', 'cam1/image'), 
+                                    ('img_out', 'cam1_out'), 
+                                    ('tags_out', 'cam1_tags')],
+        parameters  = [{'use_sim_time'  : use_sim_time},
+                       {'cam_name'      : 'cam1'},
+                       {'frame_prefix'  : PythonExpression(['"', robot_name, '_"'])}]
+    )
+
+    cam2_processing_cmd = Node(
+        package     = 'dots_vision',
+        executable  = 'vision',
+        name        = 'cam2_vision',
+        namespace   = robot_name,
+        output      = 'screen',
+        remappings  = remappings + [('img_in', 'cam2/image'), 
+                                    ('img_out', 'cam2_out'), 
+                                    ('tags_out', 'cam2_tags')],
+        parameters  = [{'use_sim_time'  : use_sim_time},
+                       {'cam_name'      : 'cam2'},
+                       {'frame_prefix'  : PythonExpression(['"', robot_name, '_"'])}]
+    )
+
+    cam3_processing_cmd = Node(
+        package     = 'dots_vision',
+        executable  = 'vision',
+        name        = 'cam3_vision',
+        namespace   = robot_name,
+        output      = 'screen',
+        remappings  = remappings + [('img_in', 'cam3/image'), 
+                                    ('img_out', 'cam3_out'), 
+                                    ('tags_out', 'cam3_tags')],
+        parameters  = [{'use_sim_time'  : use_sim_time},
+                       {'cam_name'      : 'cam3'},
+                       {'frame_prefix'  : PythonExpression(['"', robot_name, '_"'])}]
     )
 
     cam4_processing_cmd = Node(
@@ -138,9 +185,13 @@ def generate_launch_description():
         name        = 'cam4_vision',
         namespace   = robot_name,
         output      = 'screen',
-        remappings  = remappings + [('img_in', 'cam4/image'), ('img_out', 'cam4_out')],
-        parameters  = [{'use_sim_time'  : use_sim_time,
-                        'cam_name'      : 'camera4'}]
+        remappings  = remappings + [('img_in', 'cam4/image'), 
+                                    ('img_out', 'cam4_out'), 
+                                    ('tags_out', 'cam4_tags')],
+        parameters  = [{'use_sim_time'  : use_sim_time},
+                       {'cam_name'      : 'cam4'},
+                       {'marker_map'    : PythonExpression(['"', dots_vision_share, '/params/mm49_out.yml"'])},
+                       {'frame_prefix'  : PythonExpression(['"', robot_name, '_"'])}]
     )
 
     # Start tf_relay. This listens on the local tf tree and republishes transforms on the global tree 
@@ -171,6 +222,9 @@ def generate_launch_description():
     ld.add_action(get_robot_urdf_cmd)
     ld.add_action(robot_state_publisher_cmd)
     ld.add_action(cam0_processing_cmd)
+    ld.add_action(cam1_processing_cmd)
+    ld.add_action(cam2_processing_cmd)
+    ld.add_action(cam3_processing_cmd)
     ld.add_action(cam4_processing_cmd)
     ld.add_action(tf2_relay_cmd)
 

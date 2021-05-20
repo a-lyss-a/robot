@@ -27,11 +27,12 @@ Dots_process_cam::Dots_process_cam(std::string name)
 : Node(name)
 {
 
-    frame_prefix    = this->declare_parameter("frame_prefix", "robot_deadbeef_");
-    cam_name        = this->declare_parameter("cam_name", "camera0");
+    frame_prefix    = this->declare_parameter("frame_prefix", "");
+    cam_name        = this->declare_parameter("cam_name", "cam0");
     cam_link_frame  = frame_prefix + cam_name + "_link_optical";
 
     cam_cal         = this->declare_parameter("cam_cal", "cam0.yaml");
+    marker_map      = this->declare_parameter("marker_map", "");
 
     RCLCPP_INFO(this->get_logger(), "cam_frame %s", cam_link_frame.c_str());
 
@@ -39,15 +40,21 @@ Dots_process_cam::Dots_process_cam(std::string name)
                         std::bind(&Dots_process_cam::img_sub_callback, this, _1));
     img_pub     = this->create_publisher<sensor_msgs::msg::Image>("img_out", rclcpp::SensorDataQoS());
 
-#ifdef OCV_ARUCO
-    // Get aruco custom dictionary
-    dictionary  = create_dictionary();
-    parameters  = cv::aruco::DetectorParameters::create();
-#else
+    tags_pub    = this->create_publisher<std_msgs::msg::Int32MultiArray>("tags_out", rclcpp::SystemDefaultsQoS());
+
+
+    // FIXME read from yaml
+    camera.setParams(camera_matrix, dist_coeffs, cv::Size(640, 480));
+
     detector.setDictionary("ARUCO_MIP_36h12");
-    //aruco::MarkerDetector::Params &parameters = detector.getParameters();
     detector.setDetectionMode(aruco::DM_FAST, 0.01);
-#endif
+
+    if (marker_map.size())
+    {
+        mmap.readFromFile(marker_map.c_str());
+        mmtracker.setParams(camera, mmap);
+    }
+
 
     // Make the transform broadcaster
     br = std::make_shared<tf2_ros::TransformBroadcaster>(this);
@@ -66,17 +73,67 @@ Dots_process_cam::Dots_process_cam(std::string name)
     msizes[9] = 0.24;
     msizes[10] = 0.24;
     msizes[11] = 0.24;
-    msizes[100] = 0.04;
-    msizes[101] = 0.04;
-    msizes[102] = 0.04;
-    msizes[103] = 0.04;
-    msizes[104] = 0.04;
-    msizes[105] = 0.04;
+    msizes[100] = 0.08;
+    msizes[101] = 0.08;
+    msizes[102] = 0.08;
+    msizes[103] = 0.08;
+    msizes[104] = 0.08;
+    msizes[105] = 0.08;
     msizes[200] = 0.0234;
     msizes[201] = 0.0234;
 
 }
 
+void Dots_process_cam::send_transform(cv::Mat &rvec, cv::Mat &tvec, int id)
+{
+    // Pose is in form of Tvec and Rvec 3 element tuples, representing
+    // transform and rotation.
+    //
+    // We need to turn this into a tf transform, from the camera to the 
+    // detected marker..
+    //
+    // https://stackoverflow.com/questions/46363618/aruco-markers-with-opencv-get-the-3d-corner-coordinates?rq=1
+    //
+
+    cv::Mat rot(3, 3, CV_32FC1);
+    cv::Rodrigues(rvec, rot);
+    tf2::Matrix3x3 rrot(rot.at<float>(0,0), rot.at<float>(0,1), rot.at<float>(0,2),
+                        rot.at<float>(1,0), rot.at<float>(1,1), rot.at<float>(1,2),
+                        rot.at<float>(2,0), rot.at<float>(2,1), rot.at<float>(2,2));
+    tf2::Quaternion q;
+
+    // Get angle between marker z and camera x (which is roughly world -z). Since the Rvec 
+    // rotation vector is in camera frame, we can take the dot product of the unit x (1,0,0) 
+    // and the rotated unit z, which is ([0,2], [1,2], [2,2]) => rot[0,2]. All markers that
+    // are not part of the marker maps are vertical and thus the z axis is always horizontal.
+    // The dot product should always be close to 0. Larger values indicate  wrong selection
+    // of the two possible ambiguous poses due to similar reprojection errors
+
+    if ((id == 100) && (cam_name == "cam0")) RCLCPP_INFO(this->get_logger(), "% 8f", rot.at<float>(0, 2));
+
+    rrot.getRotation(q);
+    if (std::isnan(q.x()) || std::isnan(q.y()) || std::isnan(q.z()) || std::isnan(q.w()))
+        return;
+
+    // Get transform from cam to fiducial
+    //tf2::BufferCore bc;
+    geometry_msgs::msg::TransformStamped t;
+    t.header.frame_id           = cam_link_frame;
+    // FIXME compensate for camera system latency here
+    t.header.stamp              = this->now();
+    t.child_frame_id            = frame_prefix + cam_name + string_format("_fid%03d", id);
+    t.transform.translation.x   = tvec.ptr<float>(0)[0];
+    t.transform.translation.y   = tvec.ptr<float>(0)[1];
+    t.transform.translation.z   = tvec.ptr<float>(0)[2];
+    t.transform.rotation.x      = q.x();
+    t.transform.rotation.y      = q.y();
+    t.transform.rotation.z      = q.z();
+    t.transform.rotation.w      = q.w();
+    bc.setTransform(t, "default_authority", true);
+
+    // Send the transform
+    br->sendTransform(t);
+}
 
 void Dots_process_cam::img_sub_callback(const sensor_msgs::msg::Image::SharedPtr msg)
 {
@@ -86,28 +143,10 @@ void Dots_process_cam::img_sub_callback(const sensor_msgs::msg::Image::SharedPtr
     cv_bridge::CvImagePtr cv_ptr;
     cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
 
-#ifdef OCV_ARUCO
+
+    std_msgs::msg::Int32MultiArray tag_list_msg;
+
     auto start = std::chrono::steady_clock::now();
-
-    cv::aruco::detectMarkers(cv_ptr->image, dictionary, 
-        marker_corners, marker_ids, parameters, rejected);
-
-    auto end = std::chrono::steady_clock::now();
-    auto t = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-
-    RCLCPP_INFO(this->get_logger(), "Detected %3d %d", marker_ids.size(), t);
-
-    std::vector<cv::Vec3d> rvecs, tvecs;
-    cv::aruco::estimatePoseSingleMarkers(marker_corners, 0.05, camera_matrix, dist_coeffs, rvecs, tvecs);
-
-    for (int i = 0; i < rvecs.size(); ++i) 
-    {
-        cv::aruco::drawAxis(cv_ptr->image, camera_matrix, dist_coeffs, rvecs[i], tvecs[i], 0.1);
-    }
-    cv::aruco::drawDetectedMarkers(cv_ptr->image, marker_corners, marker_ids);
-
-#else
-    //auto start = std::chrono::steady_clock::now();
 
     std::vector<aruco::Marker> markers = detector.detect(cv_ptr->image);
     //auto end = std::chrono::steady_clock::now();
@@ -115,74 +154,65 @@ void Dots_process_cam::img_sub_callback(const sensor_msgs::msg::Image::SharedPtr
 
     //RCLCPP_INFO(this->get_logger(), "Detected %3d %d", markers.size(), t);
 
-    // Calculate extrinsics outside detector so we can use different size tags
-    aruco::CameraParameters cp(camera_matrix, dist_coeffs, cv::Size(640, 480));
-    for (auto &m : markers)
+
+    if (marker_map.size())
     {
-        double marker_size = 0.05;
-        auto it = msizes.find(m.id);
-        if (it != msizes.end())
-            marker_size = it->second;
-
-
-        m.calculateExtrinsics(marker_size, camera_matrix, dist_coeffs);
-        //cv::aruco::drawAxis(cv_ptr->image, camera_matrix, dist_coeffs, m.Rvec, m.Tvec, 0.1);
-        aruco::CvDrawingUtils::draw3dAxis(cv_ptr->image, m, cp);
-        m.draw(cv_ptr->image);
-
-        if (m.isPoseValid())
+        if (mmtracker.isValid())
         {
-            //RCLCPP_INFO(this->get_logger(), "Valid pose, marker id %d size %f rv:% 8f % 8f % 8f tv:% 8f % 8f % 8f", m.id, marker_size, 
-            //    m.Rvec.at<float>(0,0), m.Rvec.at<float>(1,0), m.Rvec.at<float>(2,0), m.Tvec.at<float>(0,0), m.Tvec.at<float>(1,0), m.Tvec.at<float>(2,0) );
-            // Pose is in form of Tvec and Rvec 3 element tuples, representing
-            // transform and rotation.
-            //
-            // We need to turn this into a tf transform, from the camera to the 
-            // detected marker..
-            //
-            // https://stackoverflow.com/questions/46363618/aruco-markers-with-opencv-get-the-3d-corner-coordinates?rq=1
-            //
-            cv::Mat rot(3, 3, CV_32FC1);
-            cv::Rodrigues(m.Rvec, rot);
-            tf2::Matrix3x3 rrot(rot.at<float>(0,0), rot.at<float>(0,1), rot.at<float>(0,2),
-                                rot.at<float>(1,0), rot.at<float>(1,1), rot.at<float>(1,2),
-                                rot.at<float>(2,0), rot.at<float>(2,1), rot.at<float>(2,2));
-            tf2::Quaternion q;
-            rrot.getRotation(q);
-            if (std::isnan(q.x()) || std::isnan(q.y()) || std::isnan(q.z()) || std::isnan(q.w()))
-                continue;
+            if (mmtracker.estimatePose(markers))
+            {
+                // FIXME temp use this id to indicate target
+                tag_list_msg.data.push_back(200);
+                auto rvec = mmtracker.getRvec();
+                auto tvec = mmtracker.getTvec();
 
-            // Get transform from cam to fiducial
-            tf2::BufferCore bc;
-            geometry_msgs::msg::TransformStamped t;
-            t.header.frame_id           = cam_link_frame;
-            // FIXME compensate for camera system latency here
-            t.header.stamp              = this->now();
-            t.child_frame_id            = string_format("fid%03d", m.id);
-            t.transform.translation.x   = m.Tvec.at<float>(0, 0);
-            t.transform.translation.y   = m.Tvec.at<float>(1, 0);
-            t.transform.translation.z   = m.Tvec.at<float>(2, 0);
-            t.transform.rotation.x      = q.x();
-            t.transform.rotation.y      = q.y();
-            t.transform.rotation.z      = q.z();
-            t.transform.rotation.w      = q.w();
-            bc.setTransform(t, "default_authority", true);
+                aruco::CvDrawingUtils::draw3dAxis(cv_ptr->image, camera, rvec, tvec, 0.3);
 
-            // Send the transform
-            br->sendTransform(t);
-
+                RCLCPP_INFO(this->get_logger(), "tvec %f %f %f", tvec.ptr<float>(0)[0], 
+                    tvec.ptr<float>(0)[1],tvec.ptr<float>(0)[2]);
+                send_transform(rvec, tvec, 200);
+            }
         }
 
     }
-    
+    else
+    {
+        // Calculate extrinsics outside detector so we can use different size tags
+        for (auto &m : markers)
+        {
+            double marker_size = 0.05;
+            auto it = msizes.find(m.id);
+            if (it != msizes.end())
+                marker_size = it->second;
 
-#endif
+
+            m.calculateExtrinsics(marker_size, camera, false);
+
+            if (m.isPoseValid() && (m.id < 200))
+            {
+
+                //aruco::CvDrawingUtils::draw3dAxis(cv_ptr->image, camera, m.Rvec, m.Tvec, 0.3);
+                cv::aruco::drawAxis(cv_ptr->image, camera_matrix, dist_coeffs, m.Rvec, m.Tvec, 0.3);
+                m.draw(cv_ptr->image);
+                send_transform(m.Rvec, m.Tvec, m.id);
+
+                // Put the message on the list
+                //RCLCPP_INFO(this->get_logger(), "Valid pose %d", m.id);
+                tag_list_msg.data.push_back(m.id);
+            }
+        }
+    }    
 
 
+    tags_pub->publish(tag_list_msg);
 
     sensor_msgs::msg::Image img_msg;
     cv_ptr->toImageMsg(img_msg);
     img_pub->publish(img_msg);
+
+    auto end = std::chrono::steady_clock::now();
+    auto t = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    //RCLCPP_INFO(this->get_logger(), "Detected %3d %d", tag_list_msg.data.size(), t);
 }
 
 
