@@ -28,6 +28,7 @@ find_package(image_transport REQUIRED)
 find_package(aruco REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(dots_interfaces REQUIRED)
 
 add_executable(
     vision 
@@ -35,7 +36,18 @@ add_executable(
 )
 
 
-ament_target_dependencies(vision rclcpp sensor_msgs std_msgs cv_bridge OpenCV aruco tf2 tf2_ros)
+ament_target_dependencies(
+    vision 
+    rclcpp 
+    sensor_msgs 
+    std_msgs 
+    cv_bridge 
+    OpenCV 
+    aruco 
+    tf2 
+    tf2_ros 
+    dots_interfaces
+)
 
 
 target_include_directories(vision PUBLIC

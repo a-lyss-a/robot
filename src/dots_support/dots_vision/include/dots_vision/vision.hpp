@@ -28,6 +28,8 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_broadcaster.h>
 
+#include "dots_interfaces/msg/tag.hpp"
+#include "dots_interfaces/msg/tag_array.hpp"
 
 class Dots_process_cam : public rclcpp::Node
 {
@@ -37,7 +39,7 @@ public:
 private:
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr        img_sub;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr           img_pub;
-    rclcpp::Publisher<std_msgs::msg::Int32MultiArray>::SharedPtr    tags_pub;
+    rclcpp::Publisher<dots_interfaces::msg::TagArray>::SharedPtr    tags_pub;
 
     void send_transform(cv::Mat &rvec, cv::Mat &tvec, int id);
     void img_sub_callback(const sensor_msgs::msg::Image::SharedPtr msg);
@@ -47,13 +49,8 @@ private:
     const double k3 =  0;
     const double p1 =  0;
     const double p2 =  0;
-    // const double k1 = -0.1;
-    // const double k2 =  0.0;
-    // const double k3 = -0.005;
-    // const double p1 = -0.002;
-    // const double p2 =  0.0;
     
-    cv::Mat camera_matrix = (cv::Mat_<double>(3, 3) << 330, 0, 320, 0, 330, 240, 0, 0, 1);
+    cv::Mat camera_matrix = (cv::Mat_<double>(3, 3) << 185, 0, 320, 0, 185, 240, 0, 0, 1);
     cv::Mat dist_coeffs = (cv::Mat_<double>(1, 5) << k1, k2, p1, p2, k3);
 
 

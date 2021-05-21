@@ -20,6 +20,7 @@
   <depend>std_msgs</depend> 
   <depend>robot_localization</depend> 
   <depend>dots_sim_support</depend> 
+  <depend>dots_interfaces</depend> 
         
   <!-- <depend>joy</depend> -->
 

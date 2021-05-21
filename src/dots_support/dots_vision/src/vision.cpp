@@ -40,7 +40,7 @@ Dots_process_cam::Dots_process_cam(std::string name)
                         std::bind(&Dots_process_cam::img_sub_callback, this, _1));
     img_pub     = this->create_publisher<sensor_msgs::msg::Image>("img_out", rclcpp::SensorDataQoS());
 
-    tags_pub    = this->create_publisher<std_msgs::msg::Int32MultiArray>("tags_out", rclcpp::SystemDefaultsQoS());
+    tags_pub    = this->create_publisher<dots_interfaces::msg::TagArray>("tags_out", rclcpp::SystemDefaultsQoS());
 
 
     // FIXME read from yaml
@@ -73,12 +73,12 @@ Dots_process_cam::Dots_process_cam(std::string name)
     msizes[9] = 0.24;
     msizes[10] = 0.24;
     msizes[11] = 0.24;
-    msizes[100] = 0.08;
-    msizes[101] = 0.08;
-    msizes[102] = 0.08;
-    msizes[103] = 0.08;
-    msizes[104] = 0.08;
-    msizes[105] = 0.08;
+    msizes[100] = 0.04;
+    msizes[101] = 0.04;
+    msizes[102] = 0.04;
+    msizes[103] = 0.04;
+    msizes[104] = 0.04;
+    msizes[105] = 0.04;
     msizes[200] = 0.0234;
     msizes[201] = 0.0234;
 
@@ -102,14 +102,7 @@ void Dots_process_cam::send_transform(cv::Mat &rvec, cv::Mat &tvec, int id)
                         rot.at<float>(2,0), rot.at<float>(2,1), rot.at<float>(2,2));
     tf2::Quaternion q;
 
-    // Get angle between marker z and camera x (which is roughly world -z). Since the Rvec 
-    // rotation vector is in camera frame, we can take the dot product of the unit x (1,0,0) 
-    // and the rotated unit z, which is ([0,2], [1,2], [2,2]) => rot[0,2]. All markers that
-    // are not part of the marker maps are vertical and thus the z axis is always horizontal.
-    // The dot product should always be close to 0. Larger values indicate  wrong selection
-    // of the two possible ambiguous poses due to similar reprojection errors
-
-    if ((id == 100) && (cam_name == "cam0")) RCLCPP_INFO(this->get_logger(), "% 8f", rot.at<float>(0, 2));
+ 
 
     rrot.getRotation(q);
     if (std::isnan(q.x()) || std::isnan(q.y()) || std::isnan(q.z()) || std::isnan(q.w()))
@@ -144,13 +137,13 @@ void Dots_process_cam::img_sub_callback(const sensor_msgs::msg::Image::SharedPtr
     cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
 
 
-    std_msgs::msg::Int32MultiArray tag_list_msg;
+    dots_interfaces::msg::TagArray tag_list_msg;
 
     auto start = std::chrono::steady_clock::now();
 
     std::vector<aruco::Marker> markers = detector.detect(cv_ptr->image);
-    //auto end = std::chrono::steady_clock::now();
-    //auto t = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    auto end = std::chrono::steady_clock::now();
+    auto t = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
     //RCLCPP_INFO(this->get_logger(), "Detected %3d %d", markers.size(), t);
 
@@ -162,14 +155,16 @@ void Dots_process_cam::img_sub_callback(const sensor_msgs::msg::Image::SharedPtr
             if (mmtracker.estimatePose(markers))
             {
                 // FIXME temp use this id to indicate target
-                tag_list_msg.data.push_back(200);
+                dots_interfaces::msg::Tag tag;
+                tag.id = 200;
+                tag_list_msg.data.push_back(tag);
                 auto rvec = mmtracker.getRvec();
                 auto tvec = mmtracker.getTvec();
 
                 aruco::CvDrawingUtils::draw3dAxis(cv_ptr->image, camera, rvec, tvec, 0.3);
 
-                RCLCPP_INFO(this->get_logger(), "tvec %f %f %f", tvec.ptr<float>(0)[0], 
-                    tvec.ptr<float>(0)[1],tvec.ptr<float>(0)[2]);
+                // RCLCPP_INFO(this->get_logger(), "tvec %f %f %f", tvec.ptr<float>(0)[0], 
+                //     tvec.ptr<float>(0)[1],tvec.ptr<float>(0)[2]);
                 send_transform(rvec, tvec, 200);
             }
         }
@@ -191,14 +186,31 @@ void Dots_process_cam::img_sub_callback(const sensor_msgs::msg::Image::SharedPtr
             if (m.isPoseValid() && (m.id < 200))
             {
 
+                float hl = m[3].y - m[0].y;
+                float hr = m[2].y - m[1].y;
+                float alignment = (hl - hr) / (hl + hr);
+                // if ((m.id == 100) && (cam_name == "cam0")) 
+                // {
+                //     RCLCPP_INFO(this->get_logger(), "(% 6f, %06f) (% 6f, %06f) (% 6f, %06f) (% 6f, %06f) % 6f %6d", m[0].x, m[0].y, m[1].x, m[1].y, m[2].x, m[2].y, m[3].x, m[3].y, alignment, t);
+                // }
                 //aruco::CvDrawingUtils::draw3dAxis(cv_ptr->image, camera, m.Rvec, m.Tvec, 0.3);
                 cv::aruco::drawAxis(cv_ptr->image, camera_matrix, dist_coeffs, m.Rvec, m.Tvec, 0.3);
                 m.draw(cv_ptr->image);
                 send_transform(m.Rvec, m.Tvec, m.id);
 
-                // Put the message on the list
-                //RCLCPP_INFO(this->get_logger(), "Valid pose %d", m.id);
-                tag_list_msg.data.push_back(m.id);
+                dots_interfaces::msg::Tag tag;
+                tag.id = m.id;
+                tag.alignment = alignment;
+                tag.points[0].x = m[0].x;
+                tag.points[0].y = m[0].y;
+                tag.points[1].x = m[1].x;
+                tag.points[1].y = m[1].y;
+                tag.points[2].x = m[2].x;
+                tag.points[2].y = m[2].y;
+                tag.points[3].x = m[3].x;
+                tag.points[3].y = m[3].y;
+
+                tag_list_msg.data.push_back(tag);
             }
         }
     }    
@@ -210,8 +222,8 @@ void Dots_process_cam::img_sub_callback(const sensor_msgs::msg::Image::SharedPtr
     cv_ptr->toImageMsg(img_msg);
     img_pub->publish(img_msg);
 
-    auto end = std::chrono::steady_clock::now();
-    auto t = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    //auto end = std::chrono::steady_clock::now();
+    //auto t = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     //RCLCPP_INFO(this->get_logger(), "Detected %3d %d", tag_list_msg.data.size(), t);
 }
 

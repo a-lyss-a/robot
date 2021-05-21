@@ -1,5 +1,6 @@
 
 import os
+import glob
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
@@ -28,6 +29,13 @@ that another node has been launch that provides the URDF on the topic /robot_des
 
 
 def generate_launch_description():
+    
+    # Ensure no temporary URDF files around
+    for f in glob.glob('/tmp/*.urdf'):
+        try:
+            os.remove(f)
+        except OSError:
+            print('Could not remove %s' % f)
     
     pkg_share           = get_package_share_directory('dots_example_controller')
     dots_sim_share      = get_package_share_directory('dots_sim')
