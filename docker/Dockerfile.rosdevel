@@ -227,9 +227,7 @@ RUN chmod +x start_simulator
 
 # Ensure ROS environment sourced and display available
 USER dots
-#RUN echo "export PYTHONPATH=~/py_trees:$PYTHONPATH" >> ~/.bashrc
 RUN echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
-RUN echo "source ~/nav2_ws/install/setup.bash" >> ~/.bashrc
 RUN echo "source ~/rosbag2_ws/install/setup.bash" >> ~/.bashrc
 RUN echo "source ~/gazebo_ros_pkgs_ws/install/setup.bash" >> ~/.bashrc
 RUN echo "export DISPLAY=:1" >> ~/.bashrc
