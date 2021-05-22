@@ -80,7 +80,7 @@ This will start the Gazebo simulator GUI in the Linux desktop, then spawn two ro
 The simulator starts up paused, press play to start it running. The two robots should move in random curved trajectories, changing direction when they encounter an obstacle.
 
 ## GZWeb (experimental)
-There is experimental support for [GZWeb](http://gazebosim.org/gzweb.html). This is a WebGL based browser front-end to Gazebo that is much more performant than the VNC-based GUI interface, but it is less mature. To try it out, add ```use_gzweb:=true``` to any launch command that would normally start the standard front-end. Connect [using this link](http://localhost:8085/).
+There is experimental support for [GZWeb](http://gazebosim.org/gzweb.html). This is a WebGL based browser front-end to Gazebo with a UI that is much more performant than the VNC-based GUI interface, but it is less mature. To try it out, add ```use_gzweb:=true``` to any launch command that would normally start the standard front-end. Connect [using this link](http://localhost:8085/).
 
 For example, run the explore example like:
 ```
@@ -196,19 +196,14 @@ In the real robot there is a node talking to the hardware that provides many of 
 |battery_state|sensor_msgs.BatteryState|Simulation always shows 80%|
 |cam0/camera_info
 |cam0/image|sensor_msgs.Image|Front left camera|
-|cam0_out|sensor_msgs.Image|Annotated with Aruco tags|
 |cam1/camera_info
 |cam1/image|sensor_msgs.Image|Back left camera|
-|cam1_out|sensor_msgs.Image|Annotated with Aruco tags|
 |cam2/camera_info
 |cam2/image|sensor_msgs.Image|Back right camera|
-|cam2_out|sensor_msgs.Image|Annotated with Aruco tags|
 |cam3/camera_info
 |cam3/image|sensor_msgs.Image|Front right camera|
-|cam3_out|sensor_msgs.Image|Annotated with Aruco tags|
 |cam4/camera_info
 |cam4/image|sensor_msgs.Image|Upwards facing lifter camera|
-|cam4_out|sensor_msgs.Image|Annotated with Aruco tags|
 |cmd_vel|geometry_msgs.Twist|Sets the robot velocity, response is not instant but this is the least accurate part of the model|
 |led|std_msgs.Int32MultiArray|Exactly 16 entries, one for each LED, blue=bits[23:16], green=bits[15:8], red=bits[7:0]|
 |lifter|std_msgs.Bool|Send False to lower, True to raise. This will be controlled by an action server in future|
@@ -219,6 +214,14 @@ In the real robot there is a node talking to the hardware that provides many of 
 
 There are other topics but these cannot be relied on in the real robots. For example, each robots pose is published on the ```ground_truth``` topic.
 
+
+## Transferring controllers to the real robots
+The Docker environment replicates the software environment of the robots fairly closely. All the packages that are available on the real robots are installed. What cannot be replicated is the difference in performance.
+
+The robots use a RockPi 4B 4GByte Single Board Computer. This is based on the Rockchip RK3399 SoC, a 6x ARM core big.LITTLE with 2x Cortex-A72 (fast) and 4x Cortex-A53 (small). The performance is faster (~50-100%)than a Raspberry Pi 4 but nothing like the speed of a decent PC. 
+
+## Differences between simulation and real robots
+There are a number of areas
 
 
 
