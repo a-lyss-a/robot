@@ -139,11 +139,10 @@ void Dots_process_cam::img_sub_callback(const sensor_msgs::msg::Image::SharedPtr
 
     dots_interfaces::msg::TagArray tag_list_msg;
 
-    auto start = std::chrono::steady_clock::now();
-
+    //auto start = std::chrono::steady_clock::now();
     std::vector<aruco::Marker> markers = detector.detect(cv_ptr->image);
-    auto end = std::chrono::steady_clock::now();
-    auto t = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    //auto end = std::chrono::steady_clock::now();
+    //auto t = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
     //RCLCPP_INFO(this->get_logger(), "Detected %3d %d", markers.size(), t);
 
