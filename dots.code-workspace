@@ -15,7 +15,7 @@
 		"ros.distro": "foxy",
         "editor.fontSize": 10,
         "editor.lineHeight": 12,
-        "terminal.integrated.fontSize": 10,
+        "terminal.integrated.fontSize": 12,
         "terminal.integrated.lineHeight": 1
 	}
 }

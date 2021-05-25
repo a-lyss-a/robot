@@ -4,13 +4,11 @@
 # Docker image build
 
 
-UNAME := $(shell uname)
-
 buildimg:
-	(export GID=$$(id -g); export HOSTOSTYPE=$(UNAME); docker-compose -f docker/docker-compose.yaml build)
+	docker-compose -f docker/docker-compose.yaml build
 
 buildctrl:
-	(export GID=$$(id -g); export HOSTOSTYPE=$(UNAME); docker-compose -f docker/docker-compose.controller.yaml build)
+	docker-compose -f docker/docker-compose.controller.yaml build)
 
 
 
@@ -26,7 +24,7 @@ clean:
 
 
 run:
-	GID=$$(id -g) docker-compose -f docker/docker-compose.yaml up --remove-orphans
+	docker-compose -f docker/docker-compose.yaml up --remove-orphans
 
 stop:
 	docker compose -f docker/docker-compose.yaml down
@@ -34,10 +32,10 @@ stop:
 
 
 runagent:
-	GID=$$(id -g) docker-compose -f docker/docker-compose.controller.yaml up  --remove-orphans
+	docker-compose -f docker/docker-compose.controller.yaml up  --remove-orphans
 
 run5agent:
-	GID=$$(id -g) docker-compose -f docker/docker-compose.controller5.yaml up  --remove-orphans
+	docker-compose -f docker/docker-compose.controller5.yaml up  --remove-orphans
 
 
 

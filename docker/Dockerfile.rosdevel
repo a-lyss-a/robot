@@ -35,7 +35,7 @@ RUN apt-get -y install \
     ros-foxy-rcpputils ros-foxy-desktop ros-foxy-control-msgs ros-foxy-realtime-tools \
     ros-foxy-gazebo-ros ros-foxy-gazebo-plugins ros-foxy-gazebo-ros-pkgs ros-foxy-xacro \
     ros-robot-state-publisher ros-foxy-angles ros-foxy-teleop-twist-keyboard ros-foxy-rviz2 \
-    ros-foxy-test-msgs 
+    ros-foxy-test-msgs ros-foxy-robot-localization
 
 RUN apt-get update && apt-get -y install \
     ros-foxy-py-trees-ros ros-foxy-py-trees-ros-tutorials ros-foxy-py-trees-ros-viewer \
@@ -56,24 +56,6 @@ RUN apt-get update && apt-get install -y \
 &&  rm -rf /var/lib/apt/lists/*
 
 
-# Make user
-ARG UID
-ARG GID
-ARG HOSTOSTYPE
-ENV SHELL=/bin/bash
-RUN bash -c 'echo ${HOSTOSTYPE}'
-RUN bash -c 'if [[ ${HOSTOSTYPE} == Linux ]] ; then addgroup --gid ${GID} user ; fi'
-RUN adduser --gecos '' --disabled-password --uid $UID --gid $GID dots \
-&&  adduser dots sudo \
-&&  echo "dots ALL=(ALL_ NOPASSWD:ALL" >> /etc/sudoers.d/nopasswd
-
-# Fetch and build the aruco library
-RUN git clone https://siteks@bitbucket.org/siteks/aruco-3.0.0.git --depth 1
-RUN mkdir -p aruco-3.0.0/build
-WORKDIR aruco-3.0.0/build
-RUN cmake -DCMAKE_BUILD_TYPE=Release ..
-RUN make
-RUN make install
 
 # Install code-server - opensource webbified VSCode
 WORKDIR /root    
@@ -85,15 +67,6 @@ RUN curl -fOL https://github.com/cdr/code-server/releases/download/v3.9.2/code-s
 RUN echo "[program:codeserver]" >> /etc/supervisor/conf.d/codeserver.conf \
 &&  echo "user=dots" >> /etc/supervisor/conf.d/codeserver.conf \
 &&  echo "command=/usr/bin/code-server --host 0.0.0.0 --auth none --disable-telemetry" >> /etc/supervisor/conf.d/codeserver.conf
-
-USER dots
-WORKDIR /home/dots
-ENV HOME=$WORKDIR
-
-# Fetch the gazebo model database
-RUN mkdir -p .gazebo
-RUN git clone --depth 1 https://github.com/osrf/gazebo_models.git .gazebo/models
-RUN rm -rf .gazebo/models/.git
 
 # Get explicit versions of vscode extensions
 RUN wget https://github.com/microsoft/vscode-cpptools/releases/download/1.2.2/cpptools-linux.vsix \
@@ -109,10 +82,27 @@ RUN unzip vscode-ros-dev-vsix.zip
 RUN code-server --install-extension vscode-ros-dev.vsix 
 RUN rm vscode-ros-dev*
 
-# Copy in vscode settings
-COPY docker/scripts/coder.json .local/share/code-server/
-COPY docker/scripts/settings.json .local/share/code-server/User/
+RUN mkdir -p /home/dots
 
+# Copy in vscode settings
+COPY docker/scripts/coder.json /home/dots/.local/share/code-server/
+COPY docker/scripts/settings.json /home/dots/.local/share/code-server/User/
+RUN cp /etc/skel/.bashrc /home/dots/.bashrc
+
+# Fetch and build the aruco library
+WORKDIR /root
+RUN git clone https://siteks@bitbucket.org/siteks/aruco-3.0.0.git --depth 1
+RUN mkdir -p aruco-3.0.0/build
+WORKDIR aruco-3.0.0/build
+RUN cmake -DCMAKE_BUILD_TYPE=Release ..
+RUN make
+RUN make install
+
+# Fetch the gazebo model database
+WORKDIR /home/dots
+RUN mkdir -p .gazebo
+RUN git clone --depth 1 https://github.com/osrf/gazebo_models.git .gazebo/models
+RUN rm -rf .gazebo/models/.git
 
 # Install gzweb
 #
@@ -122,9 +112,8 @@ WORKDIR gzweb
 RUN git checkout gzweb_1.4.0-gazebo11
 # Prevent the side menu starting open, it uses up lots of space and is not very useful
 RUN sed -i "s#globalEmitter.emit('openTab', 'mainMenu'#//globalEmitter.emit('openTab', 'mainMenu'#" gz3d/src/gzgui.js
-# Run deployment, this bulds the gzweb system
+# Run deployment, this builds the gzweb system
 RUN mkdir -p http/client
-# 
 RUN npm install
 RUN node_modules/.bin/grunt build
 RUN mkdir -p build
@@ -136,20 +125,26 @@ RUN ../node_modules/.bin/node-gyp configure
 RUN sed -i 's/Boost::/boost_/g' build/gzbridge.target.mk
 RUN ../node_modules/.bin/node-gyp build -d 
 WORKDIR ..
-# Get the gazebo models
-RUN cp -r ~/.gazebo/models http/client/assets
-
+# Get the gazebo models and convert them
+RUN cp -r /home/dots/.gazebo/models http/client/assets
 RUN ./webify_models_v2.py http/client/assets
 
 # Copy in the standard gazebo materials and convert all textures
 # to png
-RUN cp -r /usr/share/gazebo-11/media ~/gzweb/http/client/assets/
-RUN cd ~/gzweb/http/client/assets/media/materials/textures \
+RUN cp -r /usr/share/gazebo-11/media /home/dots/gzweb/http/client/assets/
+RUN cd /home/dots/gzweb/http/client/assets/media/materials/textures \
     && for f in *jpg; do convert $f ${f%.*}.png; done
 
-
-USER root
-RUN apt-get update && apt-get -y install ros-foxy-robot-localization
+# Get version 2.1.5 of py_trees, which has proper mem/non-mem semantics. The
+# version in the foxy apt packages is 2.1.2. Then remove the new setuptools and
+# downgrade to one that doesn't give deprecatipn warnings. I'm sure there is a 
+# better way of doing this..
+RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/py_trees
+RUN python3 -m pip install 'py_trees==2.1.5' -t /opt/ros/foxy/lib/python3.8/site-packages
+# Downgrade setuptools to stop warnings from py_trees
+RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/py_trees/setuptools
+RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/setuptools
+RUN python3 -m pip install 'setuptools==54.0.0'
 
 # Get and build modified copy of gazebo_ros_pkgs due to issues
 # https://github.com/ros-simulation/gazebo_ros_pkgs/issues/1247
@@ -181,18 +176,6 @@ WORKDIR ..
 RUN bash -c 'source /opt/ros/foxy/setup.bash \
 &&  colcon build --merge-install'
 
-# Get version 2.1.5 of py_trees, which has proper mem/non-mem semantics. The
-# version in the foxy apt packages is 2.1.2. Then remove the new setuptools and
-# downgrade to one that doesn't give deprecatipn warnings. I'm sure there is a 
-# better way of doing this..
-WORKDIR /home/dots
-RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/py_trees
-RUN python3 -m pip install 'py_trees==2.1.5' -t /opt/ros/foxy/lib/python3.8/site-packages
-# Downgrade setuptools to stop warnings from py_trees
-RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/py_trees/setuptools
-RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/setuptools
-RUN python3 -m pip install 'setuptools==54.0.0'
-
 # Helper to kill escaped processes
 COPY docker/scripts/killros /usr/local/bin
 RUN ls 
@@ -200,16 +183,139 @@ COPY docker/scripts/start_simulator .
 RUN chmod +x start_simulator
 
 # Ensure ROS environment sourced and display available
-USER dots
-RUN echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
-RUN echo "source ~/rosbag2_ws/install/setup.bash" >> ~/.bashrc
-RUN echo "source ~/gazebo_ros_pkgs_ws/install/setup.bash" >> ~/.bashrc
-RUN echo "export DISPLAY=:1" >> ~/.bashrc
+RUN echo "source /opt/ros/foxy/setup.bash" >> /home/dots/.bashrc
+RUN echo "source ~/rosbag2_ws/install/setup.bash" >> /home/dots/.bashrc
+RUN echo "source ~/gazebo_ros_pkgs_ws/install/setup.bash" >> /home/dots/.bashrc
+RUN echo "export DISPLAY=:1" >> /home/dots/.bashrc
 
+# The dorowu startup script chowns the files copied in to the user home dir
 # Start the servers
-USER root
-ENV USER=dots
 ENTRYPOINT ["/startup.sh"]
+
+
+
+
+
+
+# WORKDIR /root    
+# # Fetch and build the aruco library
+# RUN git clone https://siteks@bitbucket.org/siteks/aruco-3.0.0.git --depth 1
+# RUN mkdir -p aruco-3.0.0/build
+# WORKDIR aruco-3.0.0/build
+# RUN cmake -DCMAKE_BUILD_TYPE=Release ..
+# RUN make
+# RUN make install
+
+# # USER dots
+# # WORKDIR /home/dots
+# # ENV HOME=$WORKDIR
+
+# # Fetch the gazebo model database
+# WORKDIR /home/dots
+# RUN mkdir -p .gazebo
+# RUN git clone --depth 1 https://github.com/osrf/gazebo_models.git .gazebo/models
+# RUN rm -rf .gazebo/models/.git
+
+
+
+
+
+# Install gzweb
+#
+# Get the gzweb app, needs patching to work with gazebo11 but this fork is already patched
+# RUN git clone https://github.com/eurogroep/gzweb.git
+# WORKDIR gzweb
+# RUN git checkout gzweb_1.4.0-gazebo11
+# # Prevent the side menu starting open, it uses up lots of space and is not very useful
+# RUN sed -i "s#globalEmitter.emit('openTab', 'mainMenu'#//globalEmitter.emit('openTab', 'mainMenu'#" gz3d/src/gzgui.js
+# # Run deployment, this bulds the gzweb system
+# RUN mkdir -p http/client
+# # 
+# RUN npm install
+# RUN node_modules/.bin/grunt build
+# RUN mkdir -p build
+# WORKDIR build
+# RUN cmake ..
+# RUN make -j8
+# WORKDIR ../gzbridge
+# RUN ../node_modules/.bin/node-gyp configure
+# RUN sed -i 's/Boost::/boost_/g' build/gzbridge.target.mk
+# RUN ../node_modules/.bin/node-gyp build -d 
+# WORKDIR ..
+# # Get the gazebo models
+# RUN cp -r ~/.gazebo/models http/client/assets
+
+# RUN ./webify_models_v2.py http/client/assets
+
+# # Copy in the standard gazebo materials and convert all textures
+# # to png
+# RUN cp -r /usr/share/gazebo-11/media ~/gzweb/http/client/assets/
+# RUN cd ~/gzweb/http/client/assets/media/materials/textures \
+#     && for f in *jpg; do convert $f ${f%.*}.png; done
+
+
+# USER root
+# RUN apt-get update && apt-get -y install ros-foxy-robot-localization
+
+# # Get and build modified copy of gazebo_ros_pkgs due to issues
+# # https://github.com/ros-simulation/gazebo_ros_pkgs/issues/1247
+# # https://github.com/ros-simulation/gazebo_ros_pkgs/issues/1211
+# # Without this hack to set the update rate of the /clock topic to 100Hz, from
+# # the default of 10Hz, various nodes such as robot_localization 
+# # do not run at the required rate
+# WORKDIR /home/dots
+# RUN mkdir -p gazebo_ros_pkgs_ws/src
+# WORKDIR gazebo_ros_pkgs_ws/src
+# RUN ls -l
+# RUN git clone https://simonj23@bitbucket.org/simonj23/gazebo_ros_pkgs.git --branch foxy --depth 1
+# WORKDIR ..
+# RUN bash -c 'source /opt/ros/foxy/setup.bash \
+# &&  colcon build --symlink-install --packages-select gazebo_dev gazebo_msgs gazebo_ros'
+
+# # Get latest rosbag2 that will subscribe to all topics, regardless of qos settings.
+# # This version breaks te API and will not show up as a backport, but fixes many
+# # performance bugs and weird behaviours.
+# # This is forked off the official repo with a couple of build bugs fixed.
+# # https://github.com/ros2/rosbag2/issues/657
+# WORKDIR /home/dots
+# RUN apt-get update && apt-get -y install python3-pybind11 python3-json-tricks
+# RUN mkdir -p rosbag2_ws/src
+# WORKDIR rosbag2_ws/src
+# RUN ls -l
+# RUN git clone https://simonj23@bitbucket.org/simonj23/rosbag2.git --branch foxy-future --depth 1
+# WORKDIR ..
+# RUN bash -c 'source /opt/ros/foxy/setup.bash \
+# &&  colcon build --merge-install'
+
+# # Get version 2.1.5 of py_trees, which has proper mem/non-mem semantics. The
+# # version in the foxy apt packages is 2.1.2. Then remove the new setuptools and
+# # downgrade to one that doesn't give deprecatipn warnings. I'm sure there is a 
+# # better way of doing this..
+# WORKDIR /home/dots
+# RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/py_trees
+# RUN python3 -m pip install 'py_trees==2.1.5' -t /opt/ros/foxy/lib/python3.8/site-packages
+# # Downgrade setuptools to stop warnings from py_trees
+# RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/py_trees/setuptools
+# RUN rm -rf /opt/ros/foxy/lib/python3.8/site-packages/setuptools
+# RUN python3 -m pip install 'setuptools==54.0.0'
+
+# # Helper to kill escaped processes
+# COPY docker/scripts/killros /usr/local/bin
+# RUN ls 
+# COPY docker/scripts/start_simulator .
+# RUN chmod +x start_simulator
+
+# # Ensure ROS environment sourced and display available
+# USER dots
+# RUN echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
+# RUN echo "source ~/rosbag2_ws/install/setup.bash" >> ~/.bashrc
+# RUN echo "source ~/gazebo_ros_pkgs_ws/install/setup.bash" >> ~/.bashrc
+# RUN echo "export DISPLAY=:1" >> ~/.bashrc
+
+# # Start the servers
+# USER root
+# ENV USER=dots
+# ENTRYPOINT ["/startup.sh"]
 
 
 

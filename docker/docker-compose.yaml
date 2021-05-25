@@ -6,11 +6,9 @@ services:
     build:
       context: ../
       dockerfile: docker/Dockerfile.rosdevel
-      args:
-        - UID=${UID:-1000}
-        - GID=${GID:-1000}
-        - HOSTOSTYPE=${HOSTOSTYPE}
-    image: dots/rosdevel:foxy
+    image: simonj23/dots_rosdevel:foxy
+    environment:
+      - USER=dots 
     ports:
       - "8080:8080"
       - "8081:80"
@@ -21,18 +19,5 @@ services:
     networks:
       - dots_network
 
-#   dots_controller_service:
-#     container_name: dots_controller
-#     build:
-#       context: ./
-#       dockerfile: Dockerfile.controller
-#       args:
-#         - UID=${UID:-1000}
-#         - GID=${GID:-1000}
-#     image: dots/controller:foxy
-#     volumes:
-#       - ../:/home/dots/dots_system
-#     networks:
-#       - dots_network
 networks:
   dots_network:
