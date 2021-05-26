@@ -4,11 +4,15 @@
 # Docker image build
 
 
+#
 buildimg:
-	docker-compose -f docker/docker-compose.yaml build
+	docker-compose -f docker/docker-compose.stub.yaml build
+
+buildfull:
+	docker build --rm -t simonj23/dots_rosdevel:foxy -f docker/Dockerfile.rosdevel .
 
 buildctrl:
-	docker-compose -f docker/docker-compose.controller.yaml build)
+	docker-compose -f docker/docker-compose.controller.yaml build
 
 
 
@@ -24,10 +28,10 @@ clean:
 
 
 run:
-	docker-compose -f docker/docker-compose.yaml up --remove-orphans
+	DUID=$$(id -u) DGID=$$(id -g) docker-compose -f docker/docker-compose.stub.yaml up --remove-orphans
 
 stop:
-	docker compose -f docker/docker-compose.yaml down
+	docker compose -f docker/docker-compose.stub.yaml down
 	docker compose -f docker/docker-compose.controller.yaml down
 
 

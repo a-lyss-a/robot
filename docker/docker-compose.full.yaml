@@ -1,12 +1,11 @@
 version: "3.7"
 
 services:
-  dots_gazebo_service:
-    container_name: dots_rosdevel
+  dots_rosdevel:
+    image: simonj23/dots_rosdevel:foxy
     build:
       context: ../
       dockerfile: docker/Dockerfile.rosdevel
-    image: simonj23/dots_rosdevel:foxy
     environment:
       - USER=dots 
     ports:
