@@ -14,6 +14,8 @@ buildfull:
 push:
 	docker push simonj23/dots_rosdevel:foxy
 
+pull:
+	docker pull simonj23/dots_rosdevel:foxy
 
 buildctrl:
 	docker-compose -f docker/docker-compose.controller.yaml build
