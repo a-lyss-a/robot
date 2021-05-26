@@ -3,7 +3,6 @@
 # Use the official ros-foxy image to build the package
 
 
-#FROM arm64v8/ros:foxy AS appBuilder
 FROM dots/rosdevel:foxy AS appBuilder
 
 USER dots

@@ -2,12 +2,11 @@ version: "3.7"
 
 services:
   dots_rosdevel:
-    image: simonj23/dots_rosdevel:foxy
-    build:
-      context: ../
-      dockerfile: docker/Dockerfile.rosdevel
+    image: dots_rosdevel:foxy
     environment:
       - USER=dots 
+      - DGID=${DGID}
+      - DUID=${DUID}
     ports:
       - "8080:8080"
       - "8081:80"

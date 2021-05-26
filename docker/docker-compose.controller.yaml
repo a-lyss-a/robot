@@ -3,14 +3,6 @@ version: "3.7"
 
 services:
   dots_gazebo_service:
-    container_name: dots_rosdevel
-    build:
-      context: ../
-      dockerfile: docker/Dockerfile.rosdevel
-      args:
-        - UID=${UID:-1000}
-        - GID=${GID:-1000}
-        - HOSTOSTYPE=${HOSTOSTYPE}
     image: dots/rosdevel:foxy
     ports:
       - "8080:8080"

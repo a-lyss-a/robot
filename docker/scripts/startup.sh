@@ -35,9 +35,11 @@ if [ "$USER" != "root" ]; then
     HOME=/home/$USER
     echo "$USER:$PASSWORD" | chpasswd
     cp -r /root/{.gtkrc-2.0,.asoundrc} ${HOME}
-    chown $USER:$USER $HOME $HOME/.bashrc
+    mkdir $HOME/.config
+    chown $DUID:$DGID $HOME/.config
+    chown $DUID:$DGID $HOME $HOME/.bashrc
     #chown -R $USER:$USER $HOME/.gazebo
-    chown -R $USER:$USER $HOME/.local
+    chown -R $DUID:$DGID $HOME/.local
     [ -d "/dev/snd" ] && chgrp -R adm /dev/snd
 fi
 sed -i -e "s|%USER%|$USER|" -e "s|%HOME%|$HOME|" /etc/supervisor/conf.d/supervisord.conf
@@ -46,7 +48,7 @@ sed -i -e "s|%USER%|$USER|" -e "s|%HOME%|$HOME|" /etc/supervisor/conf.d/supervis
 if [ ! -x "$HOME/.config/pcmanfm/LXDE/" ]; then
     mkdir -p $HOME/.config/pcmanfm/LXDE/
     ln -sf /usr/local/share/doro-lxde-wallpapers/desktop-items-0.conf $HOME/.config/pcmanfm/LXDE/
-    chown -R $USER:$USER $HOME/.config
+    chown -R $DUID:$DGID $HOME/.config
 fi
 
 # nginx workers

@@ -11,6 +11,10 @@ buildimg:
 buildfull:
 	docker build --rm -t simonj23/dots_rosdevel:foxy -f docker/Dockerfile.rosdevel .
 
+push:
+	docker push simonj23/dots_rosdevel:foxy
+
+
 buildctrl:
 	docker-compose -f docker/docker-compose.controller.yaml build
 
@@ -28,7 +32,7 @@ clean:
 
 
 run:
-	DUID=$$(id -u) DGID=$$(id -g) docker-compose -f docker/docker-compose.stub.yaml up --remove-orphans
+	DUID=$$(id -u) DGID=$$(id -g) docker-compose -f docker/docker-compose.yaml up --remove-orphans
 
 stop:
 	docker compose -f docker/docker-compose.stub.yaml down

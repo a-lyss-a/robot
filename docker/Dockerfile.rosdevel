@@ -103,6 +103,8 @@ WORKDIR /home/dots
 RUN mkdir -p .gazebo
 RUN git clone --depth 1 https://github.com/osrf/gazebo_models.git .gazebo/models
 RUN rm -rf .gazebo/models/.git
+# Nasty, but expensive to do in the startup script when we actually know
+# the uid gui
 RUN chmod 777 -R .gazebo
 # Install gzweb
 #
@@ -134,6 +136,9 @@ RUN ./webify_models_v2.py http/client/assets
 RUN cp -r /usr/share/gazebo-11/media /home/dots/gzweb/http/client/assets/
 RUN cd /home/dots/gzweb/http/client/assets/media/materials/textures \
     && for f in *jpg; do convert $f ${f%.*}.png; done
+# Nasty, but expensive to do in the startup script when we actually know
+# the uid gui
+RUN chmod 777 -R /home/dots/.gazebo
 RUN chmod 777 -R /home/dots/gzweb
 
 # Get version 2.1.5 of py_trees, which has proper mem/non-mem semantics. The
