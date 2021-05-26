@@ -103,9 +103,7 @@ WORKDIR /home/dots
 RUN mkdir -p .gazebo
 RUN git clone --depth 1 https://github.com/osrf/gazebo_models.git .gazebo/models
 RUN rm -rf .gazebo/models/.git
-# Nasty, but expensive to do in the startup script when we actually know
-# the uid gui
-RUN chmod 777 -R .gazebo
+
 # Install gzweb
 #
 # Get the gzweb app, needs patching to work with gazebo11 but this fork is already patched
@@ -138,6 +136,7 @@ RUN cd /home/dots/gzweb/http/client/assets/media/materials/textures \
     && for f in *jpg; do convert $f ${f%.*}.png; done
 # Nasty, but expensive to do in the startup script when we actually know
 # the uid gui
+RUN chown 1099:1099 -R /home/dots/gzweb
 RUN chmod 777 -R /home/dots/.gazebo
 RUN chmod 777 -R /home/dots/gzweb
 

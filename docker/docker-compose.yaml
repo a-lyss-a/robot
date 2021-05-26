@@ -3,6 +3,9 @@ version: "3.7"
 services:
   dots_rosdevel:
     image: dots_rosdevel:foxy
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.stub
     environment:
       - USER=dots 
       - DGID=${DGID}

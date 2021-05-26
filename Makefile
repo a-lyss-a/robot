@@ -6,7 +6,7 @@
 
 #
 buildimg:
-	docker-compose -f docker/docker-compose.stub.yaml build
+	docker-compose -f docker/docker-compose.yaml build
 
 buildfull:
 	docker build --rm -t simonj23/dots_rosdevel:foxy -f docker/Dockerfile.rosdevel .
