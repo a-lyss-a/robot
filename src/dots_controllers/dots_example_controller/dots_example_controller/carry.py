@@ -253,6 +253,7 @@ class Process_vision(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key='aligned_carrier', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='under_cmd_vel', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='centered_carrier', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='in_dropzone', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='zero_cmd_vel', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='home_cmd_vel', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='away_cmd_vel', access=py_trees.common.Access.WRITE)
@@ -283,6 +284,8 @@ class Process_vision(py_trees.behaviour.Behaviour):
 
         self.compass_sub    = self.node.create_subscription(std_msgs.msg.Float32, 
                             'sensor/compass', self.compass_callback, qos_profile_sensor_data)
+        self.dropzone_sub   = self.node.create_subscription(std_msgs.msg.Bool, 
+                            'sensor/dropzone', self.dropzone_callback, qos_profile_sensor_data)
 
 
 
@@ -332,6 +335,8 @@ class Process_vision(py_trees.behaviour.Behaviour):
         acv.linear.y = G.max_linear_velocity * np.sin(np.pi - self.heading)
         self.blackboard.away_cmd_vel = acv
 
+    def dropzone_callback(self, msg):
+        self.blackboard.in_dropzone = msg.data
 
     def cam_tags_callback(self, msg, cam):
         # We can only dock using a single camera. If we are in the process of docking, ignore
@@ -677,6 +682,16 @@ def create_root():
     )
 
     home_delay      = py_trees.behaviours.TickCounter(name='Home delay', duration=60)
+
+    check_if_home   = py_trees.behaviours.CheckBlackboardVariableValue(
+        name    = 'In dropzone?',
+        check   = py_trees.common.ComparisonExpression(
+            variable    = 'in_dropzone', 
+            value       = True, 
+            operator    = operator.eq)
+    )
+    check_if_home_fir   = py_trees.decorators.FailureIsRunning(check_if_home)
+
     away_cmd_vel    = py_trees_ros.publishers.FromBlackboard(
         name                = 'away cmd_vel',
         topic_name          = 'cmd_vel',
@@ -743,7 +758,7 @@ def create_root():
     fetch.add_child(find_carrier)
     fetch.add_child(lift)
     fetch.add_child(home_cmd_vel)
-    fetch.add_child(home_delay)
+    fetch.add_child(check_if_home_fir)
     fetch.add_child(lower)
     fetch.add_child(escape_carrier)
     fetch.add_child(away_cmd_vel)

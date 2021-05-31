@@ -45,6 +45,11 @@ def model(size, leg_radius, leg_length, id):
         <geometry> <box> <size>0.3 0.3 0.001</size> </box> </geometry>
         <material> <script> <uri>file://media/materials/scripts/tag.material</uri> <name>mm49_target</name> </script> </material>
       </visual>
+      <visual name="id">
+        <pose>0.0 0 0.185 0 0 0</pose>
+        <geometry> <box> <size>0.2 0.2 0.001</size> </box> </geometry>
+        <material> <script> <uri>file://media/materials/scripts/text.material</uri> <name>text{id}</name> </script> </material>
+      </visual>
       <collision name="front_left_leg">
         <pose>{lp} {lp} 0.09 0 0 0</pose>
         <geometry> <cylinder> <radius>{lr}</radius> <length>{ll}</length> </cylinder> </geometry>

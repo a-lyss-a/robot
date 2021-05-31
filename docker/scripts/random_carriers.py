@@ -4,13 +4,16 @@ import random
 import numpy as np
 
 
-xmin = -1.2
-xmax = 0.0
-ymin = -1.2
-ymax = 2.3
+xmin = -2.2
+xmax = -1.2
+ymin = -1.0
+ymax = 2.2
 
-min_dist = 0.45
+min_dist = 0.5
+num_carriers = 10
 
+
+random.seed(1)
 
 class Collision(Exception):
     pass
@@ -18,7 +21,7 @@ class Collision(Exception):
 def run(n):
 
     locations = np.zeros((n, 3))
-    for trials in range(1000):
+    for trials in range(100000):
         for i in range(n):
             x = random.uniform(xmin, xmax)
             y = random.uniform(ymin, ymax)
@@ -48,4 +51,4 @@ def run(n):
 
 
 if __name__ == '__main__':
-    run(10)
+    run(num_carriers)
