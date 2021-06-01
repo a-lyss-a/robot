@@ -520,7 +520,7 @@ class Process_vision(py_trees.behaviour.Behaviour):
 
                 self.blackboard.under_cmd_vel = cmd_vel
 
-        self.node.get_logger().info('%s %d %s %s %s' % (self.docking_cam, self.ticks_since_not_seen, self.blackboard.seen_carrier, self.blackboard.aligned_carrier, self.blackboard.under_carrier))
+        #self.node.get_logger().info('%s %d %s %s %s' % (self.docking_cam, self.ticks_since_not_seen, self.blackboard.seen_carrier, self.blackboard.aligned_carrier, self.blackboard.under_carrier))
             
 
 

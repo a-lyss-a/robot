@@ -15,18 +15,23 @@ class Controller(Node):
         super().__init__('urdf_prefix')
         self.prefix = self.declare_parameter('prefix', '')
         self.filename = self.declare_parameter('filename', 'robot')
+        self.urdf = self.declare_parameter('urdf', '')
 
         self.sub = self.create_subscription(String, 'in_robot_description', self.sub_callback, 1)
 
-        # qos_profile = QoSProfile(depth=10)
-        # qos_profile.reliability = QoSReliabilityPolicy.RELIABLE
-        # qos_profile.durability = QoSDurabilityPolicy.TRANSIENT_LOCAL
+        if len(self.urdf.value):
+            self.get_logger().info('urdf parameter is set, using that')
+            self.create_file(self.urdf.value)
+
 
 
     def sub_callback(self, msg):
+        self.create_file(msg.data)
 
+
+    def create_file(self, data):
         self.get_logger().info('Got robot description urdf, writing to /tmp/%s.urdf' % self.filename.value)
-        tree = ET.ElementTree(ET.fromstring(msg.data))
+        tree = ET.ElementTree(ET.fromstring(data))
         root = tree.getroot()
 
         for i in root.iter():

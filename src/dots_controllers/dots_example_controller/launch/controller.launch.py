@@ -26,6 +26,10 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(os.path.join(pkg_share, 'launch', 'basic_cam.launch.py')),
     )
 
+
+    #---------------------------------------------------------------------------
+    # REPLACE THIS WITH YOUR CONTROLLER!
+    #---------------------------------------------------------------------------
     controller_cmd = Node(
         package     = 'dots_example_controller',
         executable  = 'carry',
@@ -33,6 +37,7 @@ def generate_launch_description():
         output      = 'screen',
         parameters  = [ {'use_sim_time' : use_sim_time}]
     )
+    #---------------------------------------------------------------------------
 
 
     # Build the launch description
