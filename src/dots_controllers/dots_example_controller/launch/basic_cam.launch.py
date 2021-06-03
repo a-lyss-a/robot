@@ -32,13 +32,6 @@ that another node has been launch that provides the URDF on the topic /robot_des
 
 def generate_launch_description():
     
-    # Ensure no temporary URDF files around
-    for f in glob.glob('/tmp/*.urdf'):
-        try:
-            os.remove(f)
-        except OSError:
-            print('Could not remove %s' % f)
-    
     pkg_share           = get_package_share_directory('dots_example_controller')
     dots_sim_share      = get_package_share_directory('dots_sim')
     dots_vision_share   = get_package_share_directory('dots_vision')
@@ -56,31 +49,13 @@ def generate_launch_description():
 
     #----------------------------------------------------------------------
     # This section is only started for simulation
-    # spawner_cmd = Node(
-    #     condition   = IfCondition(use_sim_time),
-    #     name        = PythonExpression(['"spawner_', robot_name, '"']),
-    #     package     = 'gazebo_ros',
-    #     executable  = 'spawn_entity.py',
-    #     output      = 'screen',
-    #     arguments   = [ '-topic', PythonExpression(['"/', robot_name, '/robot_description"']),
-    #                     '-spawn_service_timeout', '3000',
-    #                     '-timeout', '3000',
-    #                     '-robot_namespace', PythonExpression(['"', robot_name, '"']),
-    #                     PythonExpression(['"-x %f" % float("', robot_pose, '".split(",")[0])']),  
-    #                     PythonExpression(['"-y %f" % float("', robot_pose, '".split(",")[1])']),  
-    #                     PythonExpression(['"-Y %f" % float("', robot_pose, '".split(",")[2])']),  
-    #                     '-z 0.0', 
-    #                     '-entity', PythonExpression(['"', robot_name, '"'])],
-    # )
-
-    # Spawning from the topic seems very unreliable when spawning multiple robots. Not sure why,
-    # trying to spawn from file generated for rsp
-    spawner_cmd = ExecuteProcess(
+    spawner_cmd = Node(
         condition   = IfCondition(use_sim_time),
-        cwd         = os.path.join(dots_sim_share, 'launch'),
+        name        = PythonExpression(['"spawner_', robot_name, '"']),
+        package     = 'dots_sim_support',
+        executable  = 'spawn_entity',
         output      = 'screen',
-        cmd         = ['./spawner_helper.sh', 
-                        PythonExpression(['"/tmp/', robot_name, '.urdf"']),
+        arguments   = [ '-topic', PythonExpression(['"/', robot_name, '/robot_description"']),
                         '-spawn_service_timeout', '3000',
                         '-timeout', '3000',
                         '-robot_namespace', PythonExpression(['"', robot_name, '"']),
@@ -90,6 +65,7 @@ def generate_launch_description():
                         '-z 0.0', 
                         '-entity', PythonExpression(['"', robot_name, '"'])],
     )
+
 
     # Publish a static transform so rviz doesn't complain about missing frame 'odom' before
     # simulator started
@@ -120,20 +96,14 @@ def generate_launch_description():
     # no longer can take a model from a topic (https://github.com/ros/robot_state_publisher/issues/144),
     # we use a helper node to take the published model topic and optionally prefix the urdf
     # and write it to a temporary local file.
-    xacro_file          = os.path.join(dots_sim_share, 'urdf', 'dots.xacro')
-    doc                 = xacro.parse(open(xacro_file))
-    xacro.process_doc(doc)
-    robot_description   = doc.toxml()
-    
     get_robot_urdf_cmd = Node(
         condition   = IfCondition(use_sim_time),
         package     = 'urdf_prefix',
         executable  = 'urdf_prefix',
         namespace   = robot_name,
         output      = 'screen',
-        #remappings  = [('in_robot_description', '/robot_description')],
+        remappings  = [('in_robot_description', '/robot_description')],
         parameters  = [{'filename' : robot_name,
-                        'urdf' : robot_description,
                         'prefix' : PythonExpression(['"', robot_name, '_"'])
                         }],
     )
@@ -250,7 +220,7 @@ def generate_launch_description():
     ld.add_action(declare_use_sim_time)
     ld.add_action(declare_robot_name)
     ld.add_action(declare_robot_pose)
-    #ld.add_action(spawner_cmd)
+    ld.add_action(spawner_cmd)
     ld.add_action(init_transform_cmd)
     #ld.add_action(map_to_odom_cmd)
     ld.add_action(fake_node_cmd)

@@ -29,14 +29,6 @@ that another node has been launch that provides the URDF on the topic /robot_des
 
 
 def generate_launch_description():
-    
-    # Ensure no temporary URDF files around
-    for f in glob.glob('/tmp/*.urdf'):
-        try:
-            os.remove(f)
-        except OSError:
-            print('Could not remove %s' % f)
-
 
     pkg_share       = get_package_share_directory('dots_example_controller')
     dots_sim_share  = get_package_share_directory('dots_sim')
@@ -57,8 +49,8 @@ def generate_launch_description():
     spawner_cmd = Node(
         condition   = IfCondition(use_sim_time),
         name        = PythonExpression(['"spawner_', robot_name, '"']),
-        package     = 'gazebo_ros',
-        executable  = 'spawn_entity.py',
+        package     = 'dots_sim_support',
+        executable  = 'spawn_entity',
         output      = 'screen',
         arguments   = [ '-topic', PythonExpression(['"/', robot_name, '/robot_description"']),
                         '-spawn_service_timeout', '3000',
@@ -108,7 +100,7 @@ def generate_launch_description():
         output      = 'screen',
         remappings  = [('in_robot_description', '/robot_description')],
         parameters  = [{'filename' : robot_name,
-                        #'prefix' : PythonExpression(['"', robot_name, '_"'])
+                        'prefix' : PythonExpression(['"', robot_name, '_"'])
                         }],
     )
 
@@ -143,7 +135,7 @@ def generate_launch_description():
                         ('out/tf_static',   '/tf_static'),
                         ('in/tf',           'tf'),
                         ('in/tf_static',    'tf_static')],
-        parameters  = [ {'prefix' : PythonExpression(['"', robot_name, '_"'])},
+        parameters  = [ #{'prefix' : PythonExpression(['"', robot_name, '_"'])},
                         {'exclude_frames' : ['map', 'odom']}]
     )
 

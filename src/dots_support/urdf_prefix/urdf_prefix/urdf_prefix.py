@@ -8,6 +8,9 @@ import sys
 import time
 import xml.etree.ElementTree as ET
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy
+import uuid
+import os
+
 
 class Controller(Node):
 
@@ -30,7 +33,7 @@ class Controller(Node):
 
 
     def create_file(self, data):
-        self.get_logger().info('Got robot description urdf, writing to /tmp/%s.urdf' % self.filename.value)
+        self.get_logger().info('Got robot description urdf, will write to /tmp/%s.urdf' % self.filename.value)
         tree = ET.ElementTree(ET.fromstring(data))
         root = tree.getroot()
 
@@ -72,8 +75,19 @@ class Controller(Node):
                     if x != None:
                         x.text = self.prefix.value + x.text
 
+        # To eliminate a possible race condition where the RSP helper sees and reads the file before
+        # is is comletely written, we write the file with a unique id, ensure it is written, then 
+        # rename the file to the desired name. This works because rename is an atomic file operation.
+        unique_filename = str(uuid.uuid4())
+        with open('/tmp/%s' % unique_filename, 'wb') as f:
+            tree.write(f)
+            f.flush()
+            os.fsync(f.fileno())
 
-        tree.write('/tmp/%s.urdf' % self.filename.value)
+        time.sleep(1)
+        self.get_logger().info('Moving file to /tmp/%s.urdf' % self.filename.value)
+        os.rename('/tmp/%s' % unique_filename, '/tmp/%s.urdf' % self.filename.value)
+
         # msg.data = '<?xml version="1.0" ?>' + ET.tostring(root, encoding='unicode', method='xml')
         # self.pub.publish(msg)
 

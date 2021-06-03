@@ -10,11 +10,17 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 from launch.actions import ExecuteProcess
 from scripts import GazeboRosPaths
-import sys
-import xacro
+import glob
 
 def generate_launch_description():
 
+    # Ensure no temporary URDF files around
+    for f in glob.glob('/tmp/*.urdf'):
+        try:
+            os.remove(f)
+        except OSError:
+            print('Could not remove %s' % f)
+    
 
     # Starting poses for robots
     robots     = [
@@ -45,15 +51,15 @@ def generate_launch_description():
     # spawning multiple models simultaneously in Gazebo hits limits in Gazebo, fastrtps, or
     # both. To get round this, we spawn all the robots from a single script that does them
     # serially
-    robot_string = ' '.join(['%s %f %f %f ' % (r[0], r[1][0], r[1][1], r[1][2]) for r in robots])
-    arg = ['./spawn_multiple.sh'] + robot_string.split()
-    print(arg)
+    # robot_string = ' '.join(['%s %f %f %f ' % (r[0], r[1][0], r[1][1], r[1][2]) for r in robots])
+    # arg = ['./spawn_multiple.sh'] + robot_string.split()
+    # print(arg)
 
-    ld.add_action(ExecuteProcess(
-        cwd         = os.path.join(pkg_share, 'launch'),
-        output      = 'screen',
-        cmd         = arg
-    ))
+    # ld.add_action(ExecuteProcess(
+    #     cwd         = os.path.join(pkg_share, 'launch'),
+    #     output      = 'screen',
+    #     cmd         = arg
+    # ))
 
     for r in robots:
         print('robot:%s pose:%s' % (r[0],r[1]))

@@ -10,11 +10,17 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 from launch.actions import ExecuteProcess
 from scripts import GazeboRosPaths
-import sys
-import xacro
+import glob
 
 def generate_launch_description():
 
+    # Ensure no temporary URDF files around
+    for f in glob.glob('/tmp/*.urdf'):
+        try:
+            os.remove(f)
+        except OSError:
+            print('Could not remove %s' % f)
+    
 
     # Starting poses for robots
     robots     = [

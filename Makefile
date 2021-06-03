@@ -37,7 +37,7 @@ run:
 	DUID=$$(id -u) DGID=$$(id -g) docker-compose -f docker/docker-compose.yaml up --remove-orphans
 
 stop:
-	docker compose -f docker/docker-compose.stub.yaml down
+	docker compose -f docker/docker-compose.yaml down
 	docker compose -f docker/docker-compose.controller.yaml down
 
 
@@ -56,3 +56,4 @@ vncscreen:
 	/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --app=http://localhost:8081 --window-size=1600x900
 gzweb:
 	/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --app=http://localhost:8085 --window-size=1600x900
+
