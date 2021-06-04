@@ -27,6 +27,7 @@ setup(
             'explore = dots_example_controller.explore:main',
             'carry = dots_example_controller.carry:main',
             'RW_bias = dots_example_controller.RW_bias:main',
+            'BT_eg = dots_example_controller.BT_eg:main',
         ],
     },
 )
