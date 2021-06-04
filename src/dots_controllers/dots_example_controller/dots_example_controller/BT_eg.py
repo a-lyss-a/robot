@@ -162,7 +162,6 @@ def create_root():
 
 
     random_wander   = py_trees.composites.Sequence('Wander', memory=True)
-    random_wander_sir = py_trees.decorators.SuccessIsRunning(random_wander)
 
     pick_direction  = Pick_random_direction('Pick direction')
     random_cmd_vel  = py_trees_ros.publishers.FromBlackboard(
@@ -181,7 +180,7 @@ def create_root():
     root.add_child(obstacle_check)
     obstacle_check.add_child(obstacle_qu)
     obstacle_check.add_child(avoid_ob)
-    root.add_child(random_wander_sir)
+    root.add_child(random_wander)
     random_wander.add_child(pick_direction)
     random_wander.add_child(random_cmd_vel)
     random_wander.add_child(wander_delay)
